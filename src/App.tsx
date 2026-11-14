@@ -1,0 +1,45 @@
+import { useState } from 'react'
+import './App.css'
+
+type Draft = { start: string; wish: string; scene: string; feeling: string; reason: string; resources: string; obstacle: string; time: string; goal: string; action: string; alternative: string; dream: string; done: boolean }
+const empty: Draft = { start: '', wish: '', scene: '', feeling: '', reason: '', resources: '', obstacle: '', time: '', goal: '', action: '', alternative: '', dream: '', done: false }
+const key = 'mural-dos-sonhos:v1'
+function read(): Draft { try { const saved = JSON.parse(localStorage.getItem(key) || 'null'); return saved && typeof saved === 'object' ? { ...empty, ...Object.fromEntries(Object.entries(saved).filter(([k,v]) => k in empty && typeof v === typeof empty[k as keyof Draft])) } : empty } catch { return empty } }
+const questions: { field: keyof Draft; title: string; hint: string }[] = [
+  { field: 'wish', title: 'O que você gostaria de viver ou construir?', hint: 'Não precisa encontrar as palavras perfeitas.' },
+  { field: 'scene', title: 'Como seria um dia comum dessa vida?', hint: 'Onde você está? O que está fazendo? Pense em uma cena.' },
+  { field: 'feeling', title: 'Como você gostaria de se sentir?', hint: 'Por exemplo: com tranquilidade, autonomia ou entusiasmo.' },
+  { field: 'reason', title: 'Por que esse sonho importa para você?', hint: 'Pense no que faz sentido para você, além das expectativas dos outros.' },
+  { field: 'resources', title: 'O que você já tem a seu favor?', hint: 'Uma habilidade, uma pessoa, um recurso ou algo que você já aprendeu.' },
+  { field: 'obstacle', title: 'O que pode dificultar seu caminho?', hint: 'Escolha uma dificuldade que você possa enfrentar ou contornar.' },
+  { field: 'time', title: 'Quanto tempo cabe na sua rotina?', hint: 'Pode ser dez minutos. Escolha algo possível na sua vida atual.' },
+  { field: 'goal', title: 'Qual resultado mostraria um primeiro avanço?', hint: 'Escolha uma meta concreta. Você poderá ajustá-la depois.' },
+  { field: 'action', title: 'Qual é o menor passo que você pode dar?', hint: 'Algo específico: separar três referências, escrever um parágrafo, enviar uma mensagem.' },
+  { field: 'alternative', title: 'Se a dificuldade aparecer, como você pode adaptar?', hint: 'Se acontecer…, então eu posso…' },
+  { field: 'dream', title: 'Como você descreveria seu sonho principal?', hint: 'Quero construir uma vida em que eu possa…, com mais… e espaço para…' },
+]
+const practice = ['Observe uma imagem que represente seu sonho. Você também pode imaginar uma cena.', 'Imagine-se nesse lugar, vivendo essa situação. Não precisa fechar os olhos.', 'Perceba os detalhes ao seu redor. O que você vê? O que está fazendo?', 'Que sensação essa experiência desperta? Não precisa forçar uma resposta.', 'Agora imagine uma pequena atitude que ajuda a construir essa vida.', 'Veja-se praticando essa atitude, mesmo que ainda esteja aprendendo.', 'Se surgir uma dificuldade, imagine como você pode adaptar o passo.', 'Volte sua atenção para o presente. O que cabe fazer hoje?']
+function App() {
+  const [draft, setDraft] = useState<Draft>(read)
+  const [view, setView] = useState<'home' | 'journey' | 'practice'>('home')
+  const [step, setStep] = useState(0)
+  const [line, setLine] = useState(0)
+  const [storageError, setStorageError] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  function update(patch: Partial<Draft>) { const next = { ...draft, ...patch }; setDraft(next); try { localStorage.setItem(key, JSON.stringify(next)); setStorageError(false) } catch { setStorageError(true) } }
+  const question = questions[step - 1]
+  const title = step === 1 ? ({ 'Tenho muitas ideias': 'Qual ideia faria mais diferença na sua vida agora?', 'Já comecei': 'O que você está construindo e onde sente que travou?', 'Quero descobrir': 'O que você gostaria que tivesse mais espaço na sua vida?' }[draft.start] || questions[0].title) : question?.title
+  return <><header><a href="#" className="brand" onClick={e => { e.preventDefault(); setView('home') }}>✳ Mural dos Sonhos</a><span className="tag">um passo de cada vez</span></header><main>
+    <p className="local-note">Prévia em desenvolvimento · Seus textos ficam somente neste navegador, sem proteção por conta. Use exemplos e evite dados sensíveis em aparelhos compartilhados.</p>
+    {storageError && <p role="alert">Não foi possível salvar neste navegador. Seu progresso atual pode ser perdido ao fechar a página.</p>}
+    {view === 'home' && <>
+      <section className="hero"><div><span className="eyebrow">UM ESPAÇO PARA O QUE IMPORTA</span><h1>Seu amanhã começa<br/>com um pequeno passo.</h1><p>Dê forma ao que você deseja viver. Encontre uma direção e um jeito possível de começar.</p><button onClick={() => { setStep(0); setView('journey') }}>{draft.dream ? 'Revisar meu caminho' : 'Vamos descobrir meu caminho'} <span>↗</span></button></div><aside className="scrap"><span className="tape"/><span className="sun">☀</span><p>Tem espaço<br/>para o seu<br/><em>próximo capítulo.</em></p><small>comece de onde você está ♡</small></aside></section>
+      <section className="cards"><article className="card lavender"><span className="eyebrow">01 / MINHA VISÃO</span><h2>Um sonho com a sua cara</h2><p>{draft.dream || 'Você não precisa ter todas as respostas para começar a encontrar uma direção.'}</p>{!draft.dream && <span className="sticker">ainda em construção ✧</span>}</article><article className="card cream"><span className="eyebrow">02 / MEU PASSO DE HOJE</span><h2>{draft.action || 'Pequeno também conta'}</h2><p>{draft.goal ? `Minha primeira meta: ${draft.goal}` : 'Depois da jornada, sua próxima ação aparece aqui.'}</p>{draft.action && <><button className="secondary" onClick={() => update({ done: !draft.done })}>{draft.done ? '✓ Passo realizado · desfazer' : 'Marcar como realizado'}</button>{draft.alternative && <p className="small">Se precisar adaptar: {draft.alternative}</p>}</>}</article><article className="card peach"><span className="eyebrow">03 / UMA PAUSA PARA IMAGINAR</span><h2>Volte ao que te move</h2><p>Uma prática em texto para conectar sua visão com uma atitude possível.</p><button className="text-button" onClick={() => { setLine(0); setView('practice') }}>Começar visualização →</button></article></section>
+      <p className="footer-note">Seu ritmo pode mudar. Seu caminho também.</p>
+    </>}
+    {view === 'journey' && <section className="journey"><button className="text-button" onClick={() => setView('home')}>← Salvar e sair</button><p className="eyebrow">MEU CAMINHO · {step + 1} DE {questions.length + 1}</p><progress value={step + 1} max={questions.length + 1}/>{step === 0 ? <><h1>Como você chega aqui hoje?</h1><p>Você não precisa ter tudo resolvido. Vamos encontrar uma direção que faça sentido.</p><div className="options">{['Tenho um sonho', 'Tenho muitas ideias', 'Já comecei', 'Quero descobrir'].map(option => <button key={option} aria-pressed={draft.start === option} className={draft.start === option ? 'option selected' : 'option'} onClick={() => update({ start: option })}>{option}</button>)}</div></> : <><h1><label htmlFor="answer">{title}</label></h1><p id="hint">{question.hint}</p><textarea id="answer" key={question.field} aria-describedby="hint" maxLength={1600} value={String(draft[question.field])} onChange={e => update({ [question.field]: e.target.value, ...(question.field === 'action' ? { done: false } : {}) })} rows={5}/></>}<div className="actions"><button className="secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>Voltar</button><button disabled={step === 0 ? !draft.start : !String(draft[question.field]).trim()} onClick={() => step === questions.length ? setView('home') : setStep(step + 1)}>{step === questions.length ? 'Ver meu caminho' : 'Continuar →'}</button></div></section>}
+    {view === 'practice' && <section className="journey practice"><button className="text-button" onClick={() => setView('home')}>← Encerrar prática</button><p className="eyebrow">UMA PAUSA GUIADA · NO SEU RITMO</p><h1>Imagine o que te move.</h1><p>Você pode pausar ou encerrar quando quiser. Não existe uma sensação obrigatória.</p>{showAll ? practice.map(text => <p className="practice-line" key={text}>{text}</p>) : <p className="practice-line" aria-live="polite">{practice[line]}</p>}<div className="actions">{!showAll && <><button className="secondary" disabled={!line} onClick={() => setLine(line - 1)}>Anterior</button><button onClick={() => line === practice.length - 1 ? setView('home') : setLine(line + 1)}>{line === practice.length - 1 ? 'Ver meu próximo passo' : 'Próxima frase →'}</button></>}</div><button className="text-button" onClick={() => setShowAll(!showAll)}>{showAll ? 'Uma frase por vez' : 'Ler todo o texto'}</button></section>}
+    <footer><span>Mural dos Sonhos · prévia para pessoas a partir de 16 anos</span><button className="text-button" onClick={() => { if (window.confirm('Apagar todos os textos salvos neste navegador?')) update(empty) }}>Apagar meus textos locais</button></footer>
+  </main></>
+}
+export default App
