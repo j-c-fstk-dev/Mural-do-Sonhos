@@ -1,36 +1,35 @@
 # Plano de desenvolvimento
 
-## Decisões
+## Direção vigente
 
-- Produto: Mural dos Sonhos; público a partir de 16 anos.
-- Português, celular primeiro, tons pastéis, scrapbook discreto.
-- Sonho principal descritivo, metas concretas e ações editáveis.
-- Painel privado; sem compartilhamento, anúncios ou IA interna no MVP.
-- Perguntas adaptativas com regras explícitas. Imagens geradas fora do app, com prompts orientativos.
-- Visualização por texto, controlada pela pessoa; sem promessas de resultado.
+Atualizada após feedback do usuário e da esposa:
+
+- Produto: **Mural dos Sonhos**, público a partir de 16 anos.
+- Diferencial principal: montar um mural privado de forma rápida e fácil.
+- Tela inicial é o mural. Não exigir jornada de perguntas para adicionar fotos.
+- Cinco layouts: Recortes, Essencial, Instantes, Mosaico e Horizonte.
+- Fotos da galeria local, arrastar para espaços do mural e alternativa por toque/teclado.
+- Tons pastéis e scrapbook discreto; sem geração de IA interna, anúncios ou compartilhamento no MVP.
+- **Visualização guiada em texto removida**, inclusive das telas e propostas de venda.
+- Metas, perguntas adaptativas e rotina permanecem como recursos opcionais.
+- Beta gratuito fechado por 14 dias; preço fundador **a decidir após testar o mural**. A proposta anterior de R$ 49 por seis meses foi descartada. Não há cobrança implementada.
 - Orçamento preferencialmente zero até receita; teto informado de R$ 100/mês. Não contratar serviços automaticamente.
-- Beta fechado por 14 dias com cerca de 20 convidados; oferta posterior de R$ 49 por seis meses, sem renovação implícita.
 
-## Etapas
+## Entrega local
 
-1. Base React/TypeScript, identidade visual e jornada local.
-2. Autenticação e persistência Supabase; permissões por usuário, exclusão de conta, continuidade da jornada.
-3. Mural de imagens privadas, compressão, limites, cartões e reordenação; prompts para ferramentas externas.
-4. Metas e ações persistentes, rotina diária e revisão; separar conclusão de uma ação de registro histórico.
-5. PWA e acessibilidade; sem cache offline de dados pessoais inicialmente.
-6. Preparação do beta: política de privacidade, tratamento de menores, controles de acesso por convite, teste da jornada e das permissões.
-7. Beta de 14 dias, feedback e correções; avaliar ativação e retorno sem coletar textos privados em analytics.
-8. Oferta fundadora: condições de acesso e cancelamento, estrutura fiscal, contratação por menores e checkout externo a definir.
+- IndexedDB para textos e fotos, com repositório assíncrono e entidades preparadas para futura integração Supabase.
+- Galeria, compressão, cinco layouts, organização por arrastar, posicionamento por toque, legendas, frases e exportação PNG.
+- Jornada adaptativa com retomada, sonho principal, várias metas e ações editáveis.
+- Tela Hoje, datas opcionais, conclusão/reabertura, adiamento e histórico.
+- Revisão semanal editável, prompts para gerar imagens fora do app.
+- Backup completo, restauração validada, exclusão local, instalação PWA e interface offline.
+- Testes de dados e testes de navegador em tamanhos desktop e celular.
 
-## Condições para beta
+## Próximas etapas
 
-- Testar login, recuperação, retomada e exclusão.
-- Provar isolamento entre duas contas para textos e arquivos.
-- Validar celular, teclado, contraste e movimento reduzido.
-- Limites de upload e capacidade gratuitos confirmados nos provedores.
-- Revisar informações de privacidade e participação de adolescentes antes dos convites.
-- Não anunciar recursos ainda não implementados como parte da oferta disponível.
-
-## Pendências externas
-
-Escolher/configurar projetos Supabase e hospedagem; revisar limites e termos atuais; aprovação editorial das perguntas; definir checkout e aspectos fiscais antes de cobrar. Domínio próprio opcional, sem contratação nesta etapa.
+1. Testar com o usuário e ajustar principalmente montagem do mural e layouts.
+2. Configurar Supabase: autenticação, adaptador remoto, bucket privado, RLS e migração confirmada dos dados locais. Ver `ARQUITETURA.md`.
+3. Validar segurança e privacidade entre contas, limites de arquivo, recuperação e exclusão.
+4. Preparar avisos e condições para público a partir de 16 anos, hospedagem e convites do beta.
+5. Rodar beta de 14 dias com cerca de 20 pessoas e coletar feedback sem conteúdo privado.
+6. Definir preço, condições de acesso, cancelamento, contratação por adolescentes, estrutura fiscal e checkout externo antes de cobrar.
