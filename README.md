@@ -47,5 +47,6 @@ O app usa fontes do sistema e não inclui analytics. A hospedagem pode registrar
 
 Preço a decidir após testar o mural. A oferta anterior de R$ 49 foi descartada. Beta fechado planejado por 14 dias.
 
+- [Relatório de desenvolvimento e decisões](docs/RELATORIO_DE_DESENVOLVIMENTO.md)
 - [Plano vigente](docs/PLANO.md)
 - [Arquitetura e integração Supabase](docs/ARQUITETURA.md)
