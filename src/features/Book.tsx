@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Check,
@@ -15,19 +15,30 @@ import { fonts, paperPresets, textures } from "../data/paper";
 import { useAction } from "../data/useAction";
 import { layouts } from "./layouts";
 import { Mural } from "./Mural";
+import { EditorGuide } from "./EditorGuide";
 
 export function Book({
   store,
   sidebar,
   closeMobileSidebar,
   tourSeen,
+  openMenu,
+  rememberMenu,
 }: ScreenProps & {
   sidebar: HTMLElement | null;
   closeMobileSidebar: () => void;
   tourSeen: boolean;
+  openMenu: () => void;
+  rememberMenu: () => void;
 }) {
   const [chooseLayout, setChooseLayout] = useState(false);
-  const [showTools, setShowTools] = useState(() => window.innerWidth > 1100);
+  const [showTools, setShowTools] = useState(
+    () => !store.data.profile.editor_guide_seen || window.innerWidth > 900,
+  );
+  const [replayGuide, setReplayGuide] = useState(false);
+  const openTools = useCallback(() => setShowTools(true), []);
+  const stage = useRef<HTMLDivElement>(null);
+  const editor = useRef<HTMLDivElement>(null);
   const [inspector, setInspector] = useState<HTMLDivElement | null>(null);
   const [direction, setDirection] = useState<"next" | "previous">("next");
   const action = useAction();
@@ -47,6 +58,49 @@ export function Book({
     !store.data.cards.length &&
     !store.data.free_items.length &&
     store.data.profile.template === "scrapbook";
+
+  const template = scoped.data.profile.template;
+  const guiding =
+    tourSeen &&
+    !chooseLayout &&
+    !firstChoice &&
+    (replayGuide || !store.data.profile.editor_guide_seen);
+  useEffect(() => {
+    const stageElement = stage.current;
+    const editorElement = editor.current;
+    const sheet = stageElement?.querySelector(".free-paper, .mural-grid");
+    if (!sheet || !stageElement || !editorElement) return;
+    const measure = () => {
+      editorElement.style.setProperty(
+        "--sheet-height",
+        `${sheet.getBoundingClientRect().height}px`,
+      );
+      editorElement.style.setProperty(
+        "--sheet-top",
+        `${Math.max(0, sheet.getBoundingClientRect().top - stageElement.getBoundingClientRect().top)}px`,
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(sheet);
+    observer.observe(stageElement);
+    stageElement.addEventListener("animationend", measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      stageElement.removeEventListener("animationend", measure);
+    };
+  }, [pageId, template]);
+
+  function finishGuide() {
+    rememberMenu();
+    setReplayGuide(false);
+    if (!store.data.profile.editor_guide_seen)
+      void action.run(() =>
+        store.mutate((data) => {
+          data.profile.editor_guide_seen = true;
+        }),
+      );
+  }
 
   function changePage(offset: number) {
     const target = pages[index + offset];
@@ -107,15 +161,16 @@ export function Book({
           <button
             type="button"
             className="book-layout-button text-button"
+            data-guide="layout"
             onClick={() => setChooseLayout(true)}
           >
-            <LayoutTemplate size={17} /> Layout da página
+            <LayoutTemplate size={17} /> Modelo da página
           </button>,
           sidebar,
         )}
       {tourSeen && (chooseLayout || firstChoice) && (
         <Modal
-          title="Escolha um layout"
+          title="Escolha um modelo"
           onClose={() => {
             if (firstChoice) selectLayout(scoped.data.profile.template);
             else setChooseLayout(false);
@@ -126,6 +181,8 @@ export function Book({
               <button
                 key={layout.id}
                 className={`layout-option ${scoped.data.profile.template === layout.id ? "active" : ""}`}
+                aria-label={layout.name}
+                aria-description={layout.description}
                 aria-pressed={scoped.data.profile.template === layout.id}
                 type="button"
                 disabled={action.pending}
@@ -139,24 +196,29 @@ export function Book({
                     <i key={marker} />
                   ))}
                 </span>
-                <span>
+                <span className="book-layout-name">
                   {layout.name}{" "}
                   {scoped.data.profile.template === layout.id && (
                     <Check size={14} />
                   )}
                 </span>
+                <small>{layout.description}</small>
               </button>
             ))}
           </div>
           <p className="small muted">
-            Em Livre, você posiciona os elementos onde quiser. Os templates têm
-            espaços prontos.
+            Use Livre para montar a folha do seu jeito. Nos outros modelos, é só
+            preencher os espaços.
           </p>
           <Feedback action={action} />
         </Modal>
       )}
       <div className="book-toolbar">
-        <div className="book-pagination" aria-label="Páginas do caderno">
+        <div
+          className="book-pagination"
+          data-guide="pages"
+          aria-label="Páginas do caderno"
+        >
           <button
             className="icon-button"
             aria-label="Página anterior"
@@ -185,18 +247,26 @@ export function Book({
           </button>
         </div>
         <button
+          type="button"
+          className="text-button book-help-button"
+          aria-expanded={guiding}
+          onClick={() => setReplayGuide(true)}
+        >
+          Ajuda do mural
+        </button>
+        <button
           className="text-button"
           aria-controls="book-inspector"
           aria-expanded={showTools}
           onClick={() => setShowTools(!showTools)}
         >
           <PanelRight size={19} />{" "}
-          {showTools ? "Recolher edição" : "Editar página"}
+          {showTools ? "Fechar ferramentas" : "Abrir ferramentas"}
         </button>
       </div>
       <Feedback action={action} />
-      <div className="book-editor">
-        <div className="book-stage">
+      <div className="book-editor" ref={editor}>
+        <div className="book-stage" ref={stage}>
           <section
             onTouchStart={(event) => {
               const target = event.target as HTMLElement;
@@ -243,7 +313,7 @@ export function Book({
               sidebar={sidebar}
               inspector={inspector}
               closeMobileSidebar={closeMobileSidebar}
-              showInspector={() => setShowTools(true)}
+              showInspector={openTools}
             />
           </section>
         </div>
@@ -253,16 +323,10 @@ export function Book({
           hidden={!showTools}
           aria-label="Painel de edição"
         >
-          <button
-            className="book-close-tools text-button"
-            type="button"
-            onClick={() => setShowTools(false)}
-          >
-            Fechar painel de edição
-          </button>
+          <h2 className="book-tools-heading">Ferramentas</h2>
           <div ref={setInspector} />
           <details className="book-tool" open>
-            <summary>Página e papel</summary>
+            <summary data-guide="paper">Título e papel</summary>
             <label>
               Título da página
               <input
@@ -320,7 +384,7 @@ export function Book({
               </label>
             </div>
             <label>
-              Textura
+              Desenho do papel
               <select
                 value={paper.texture}
                 onChange={(event) =>
@@ -336,7 +400,7 @@ export function Book({
                 ))}
               </select>
             </label>
-            <div className="book-presets" aria-label="Papéis de scrapbook">
+            <div className="book-presets" aria-label="Ideias de papel">
               {paperPresets.map(({ label, ...preset }) => (
                 <button
                   key={label}
@@ -356,6 +420,14 @@ export function Book({
           </details>
         </aside>
       </div>
+      {guiding && (
+        <EditorGuide
+          free={template === "free"}
+          onFinish={finishGuide}
+          openMenu={openMenu}
+          openTools={openTools}
+        />
+      )}
     </>
   );
 }

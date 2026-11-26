@@ -41,9 +41,9 @@ export function Today({ store }: ScreenProps) {
           day: "numeric",
           month: "long",
         })}
-        title="Um passo no que importa."
+        title="O que vou fazer hoje?"
       >
-        Seu ritmo pode mudar. Seu caminho também.
+        Escolha um passo pequeno para chegar mais perto do seu sonho.
       </PageTitle>
       {!store.data.profile.journey_completed && (
         <div className="welcome-note">
@@ -51,17 +51,18 @@ export function Today({ store }: ScreenProps) {
           <div>
             <strong>
               {store.data.profile.journey_step
-                ? "Seu caminho está esperando por você."
-                : "Vamos encontrar uma direção?"}
+                ? "Quer continuar as perguntas?"
+                : "Qual é o seu sonho?"}
             </strong>
             <p>
-              Responda às perguntas para conectar seu sonho ao primeiro passo.
+              Responda a algumas perguntas para pensar em um sonho e no que
+              fazer primeiro.
             </p>
           </div>
           <a href="#/jornada" className="button">
             {store.data.profile.journey_step
-              ? "Continuar jornada"
-              : "Começar jornada"}{" "}
+              ? "Continuar perguntas"
+              : "Responder perguntas"}{" "}
             <ArrowRight size={17} />
           </a>
         </div>
@@ -80,8 +81,7 @@ export function Today({ store }: ScreenProps) {
               </p>
               {next.scheduled_on && next.scheduled_on < date && (
                 <p className="small">
-                  Esse passo ficou para trás. Você pode adaptar a data ou a
-                  ação.
+                  A data passou. Você pode marcar outro dia ou mudar o passo.
                 </p>
               )}
               <div className="inline-actions">
@@ -93,7 +93,7 @@ export function Today({ store }: ScreenProps) {
                         store.mutate((data) =>
                           changeTask(data, next.id, { status: "done" }),
                         ),
-                      "Passo registrado. Reconheça esse avanço!",
+                      "Passo marcado como feito.",
                     )
                   }
                 >
@@ -118,7 +118,7 @@ export function Today({ store }: ScreenProps) {
                             "Deixei para amanhã.",
                           ),
                         ),
-                      "Passo reagendado para amanhã.",
+                      "Passo marcado para amanhã.",
                     );
                   }}
                 >
@@ -128,11 +128,11 @@ export function Today({ store }: ScreenProps) {
             </>
           ) : (
             <>
-              <h2>O que cabe no seu dia?</h2>
+              <h2>Quer escolher um passo?</h2>
               <p>
                 {doneToday.length
-                  ? "Você já registrou um avanço. Se fizer sentido, escolha outro passo — ou encerre por hoje."
-                  : "Escolha uma ação possível. Você não precisa preencher o dia inteiro."}
+                  ? "Você já deu um passo. Pode escolher outro ou parar por hoje."
+                  : "Escolha algo que você consiga fazer hoje."}
               </p>
               {!store.data.goals.length ? (
                 <a href="#/plano" className="button">
@@ -161,17 +161,15 @@ export function Today({ store }: ScreenProps) {
           )}
           <p>
             {store.data.dream.description ||
-              "O futuro ganha forma quando você encontra uma direção."}
+              "Coloque na folha algo que você quer fazer um dia."}
           </p>
           <a href="#/">Visitar meu mural →</a>
         </aside>
       </div>
       {due.length > 1 && (
         <section className="surface">
-          <h2>Outros passos disponíveis</h2>
-          <p className="muted">
-            Escolha o que faz sentido. Não é uma obrigação concluir todos.
-          </p>
+          <h2>Outros passos para hoje</h2>
+          <p className="muted">Escolha o que quiser fazer.</p>
           {due.slice(1).map((task) => (
             <TaskRow key={task.id} store={store} task={task} onEdit={setEdit} />
           ))}
@@ -179,8 +177,8 @@ export function Today({ store }: ScreenProps) {
       )}
       <section className="surface">
         <div className="section-heading">
-          <h2>Passos sem data fixa</h2>
-          <a href="#/plano">Ver meu caminho →</a>
+          <h2>Passos sem data</h2>
+          <a href="#/plano">Ver metas e passos →</a>
         </div>
         {unscheduled.length ? (
           unscheduled.map((task) => (
@@ -225,22 +223,24 @@ export function Today({ store }: ScreenProps) {
       <section className="cards">
         <article className="card lavender">
           <p className="eyebrow">MEU MURAL</p>
-          <h2>Um recorte do seu amanhã</h2>
-          <p>
-            Reúna imagens das experiências e dos lugares que você quer viver.
-          </p>
+          <h2>Suas ideias na folha</h2>
+          <p>Junte fotos dos lugares e das coisas que você quer conhecer.</p>
           <a href="#/">Visitar meu mural →</a>
         </article>
         <article className="card sage">
           <p className="eyebrow">REVISÃO SEMANAL</p>
-          <h2>{review ? "Seu caminho pode mudar" : "Como foi sua semana?"}</h2>
+          <h2>
+            {review
+              ? "Você já escreveu sobre esta semana"
+              : "Como foi sua semana?"}
+          </h2>
           <p>
             {review
-              ? "Você já registrou uma revisão nesta semana. Pode revisitar ou atualizar quando quiser."
-              : "Reconheça avanços e encontre um ajuste possível, sem cobrança."}
+              ? "Você pode ler ou mudar o que escreveu."
+              : "Escreva o que deu certo, o que foi difícil e o que quer fazer depois."}
           </p>
           <a href="#/revisao">
-            {review ? "Ver minha revisão" : "Fazer uma revisão"} →
+            {review ? "Ler minha semana" : "Escrever sobre a semana"} →
           </a>
         </article>
         <article className="card peach">
@@ -251,7 +251,7 @@ export function Today({ store }: ScreenProps) {
               ? "passo realizado hoje"
               : "passos realizados hoje"}
           </h2>
-          <p>Uma pausa também pode fazer parte do caminho.</p>
+          <p>Veja o que você já fez ou mudou.</p>
           <a href="#/historico">Ver histórico →</a>
         </article>
       </section>
@@ -268,19 +268,19 @@ export function Today({ store }: ScreenProps) {
 }
 export function History({ store }: ScreenProps) {
   const labels = {
-    completed: "Passo concluído",
-    reopened: "Passo reaberto",
-    rescheduled: "Data ajustada",
-    adapted: "Ação adaptada",
+    completed: "Passo feito",
+    reopened: "Passo a fazer",
+    rescheduled: "Mudou de dia",
+    adapted: "Passo mudou",
   };
   return (
     <>
-      <PageTitle eyebrow="CADA AVANÇO TEM UMA HISTÓRIA" title="Meu percurso">
-        Registros das ações que você concluiu, adaptou ou reagendou.
+      <PageTitle eyebrow="HISTÓRICO" title="O que já fiz">
+        Veja os passos que você fez, mudou ou deixou para outro dia.
       </PageTitle>
       <div className="surface">
         {!store.data.events.length ? (
-          <p>Seus registros aparecem aqui conforme você usa o plano.</p>
+          <p>Seus passos vão aparecer aqui quando você fizer ou mudar algum.</p>
         ) : (
           <ol className="timeline">
             {store.data.events.map((event) => (

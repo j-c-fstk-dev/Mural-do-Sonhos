@@ -11,6 +11,7 @@ import {
   ArrowUp,
   Download,
   ImagePlus,
+  Pencil,
   Layers,
   RotateCw,
   Shapes,
@@ -167,6 +168,71 @@ function PaintedItem({
   );
 }
 
+function InlineText({
+  item,
+  done,
+}: {
+  item: TextItem;
+  done: (body?: string) => void;
+}) {
+  const field = useRef<HTMLTextAreaElement>(null);
+  const finished = useRef(false);
+
+  useEffect(() => {
+    field.current?.focus({ preventScroll: true });
+    field.current?.select();
+  }, []);
+
+  function finish(save: boolean) {
+    if (finished.current) return;
+    finished.current = true;
+    done(save ? field.current?.value : undefined);
+  }
+
+  return (
+    <div
+      className="book-inline-text"
+      data-up={item.y > 550}
+      data-left={item.x > 600}
+    >
+      <textarea
+        ref={field}
+        defaultValue={item.body}
+        maxLength={1000}
+        aria-label="Escreva na folha"
+        onBlur={(event) => {
+          if (!event.currentTarget.parentElement?.contains(event.relatedTarget))
+            finish(true);
+        }}
+        onKeyDown={(event) => {
+          if (
+            event.key === "Escape" ||
+            (event.key === "Enter" && (event.ctrlKey || event.metaKey))
+          ) {
+            event.preventDefault();
+            finish(event.key === "Enter");
+          }
+        }}
+      />
+      <button
+        type="button"
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={() => finish(true)}
+      >
+        Pronto
+      </button>
+      <button
+        type="button"
+        className="text-button"
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={() => finish(false)}
+      >
+        Cancelar
+      </button>
+    </div>
+  );
+}
+
 function TextEditor({
   item,
   update,
@@ -179,7 +245,7 @@ function TextEditor({
   return (
     <div className="book-text-controls">
       <label>
-        Texto do mural
+        O que está escrito
         <textarea
           defaultValue={item.body}
           rows={4}
@@ -193,7 +259,7 @@ function TextEditor({
         />
       </label>
       <label>
-        Fonte do texto
+        Letra do texto
         <select
           value={item.font}
           onChange={(event) =>
@@ -209,7 +275,7 @@ function TextEditor({
       </label>
       <div className="book-field-grid">
         <label>
-          Tamanho da fonte
+          Tamanho da letra
           <input
             type="number"
             min={10}
@@ -233,7 +299,7 @@ function TextEditor({
         </label>
       </div>
       <label>
-        Fundo da caixa de texto
+        Fundo do texto
         <select
           value={item.backgroundMode}
           onChange={(event) =>
@@ -248,7 +314,7 @@ function TextEditor({
       </label>
       {item.backgroundMode === "filled" && (
         <label>
-          Cor da caixa de texto
+          Cor do fundo do texto
           <input
             type="color"
             value={item.backgroundColor}
@@ -285,12 +351,12 @@ function TextEditor({
           }
         >
           <option value="none">Sem lista</option>
-          <option value="bullet">Com marcadores</option>
+          <option value="bullet">Com bolinhas</option>
           <option value="numbered">Numerada</option>
         </select>
       </label>
       <label>
-        Curvatura do texto
+        Curvar o texto
         <input
           type="range"
           min={-100}
@@ -323,6 +389,7 @@ export function FreeMural({
   );
   const [category, setCategory] = useState(0);
   const [fontsReady, setFontsReady] = useState(false);
+  const [inlineId, setInlineId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState<{
     id: string;
     body: string;
@@ -418,10 +485,10 @@ export function FreeMural({
       kind: "text",
       body:
         kind === "title"
-          ? "Meu próximo capítulo"
+          ? "Viagem à praia"
           : kind === "list"
-            ? "Meu primeiro passo"
-            : "Escreva sua ideia",
+            ? "Escolher uma praia\nJuntar fotos\nPlanejar a viagem"
+            : "Quero aprender a surfar.",
       font: kind === "title" ? "display" : "sans",
       fontSize: kind === "title" ? 48 : 28,
       color: "#493741",
@@ -545,6 +612,7 @@ export function FreeMural({
               <button
                 type="button"
                 className="text-button"
+                data-guide="photos"
                 aria-expanded={library === "photos"}
                 onClick={() =>
                   setLibrary(library === "photos" ? null : "photos")
@@ -555,6 +623,7 @@ export function FreeMural({
               <button
                 type="button"
                 className="text-button"
+                data-guide="text"
                 aria-expanded={library === "text"}
                 onClick={() => setLibrary(library === "text" ? null : "text")}
               >
@@ -563,6 +632,7 @@ export function FreeMural({
               <button
                 type="button"
                 className="text-button"
+                data-guide="stickers"
                 aria-expanded={library === "stickers"}
                 onClick={() =>
                   setLibrary(library === "stickers" ? null : "stickers")
@@ -574,7 +644,7 @@ export function FreeMural({
             {library === "photos" && (
               <>
                 <label className="book-upload">
-                  Adicionar fotos à galeria
+                  Escolher fotos do aparelho
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -592,7 +662,7 @@ export function FreeMural({
                 </label>
                 {!store.data.gallery.length && (
                   <p className="small muted">
-                    Envie fotos para usar nas páginas.
+                    Escolha uma foto do seu aparelho.
                   </p>
                 )}
                 <div className="free-photo-picker">
@@ -644,21 +714,24 @@ export function FreeMural({
                   disabled={full || action.pending}
                   onClick={() => addText("title")}
                 >
-                  Adicionar chamada
+                  <strong>Título grande</strong>
+                  <span>Viagem à praia</span>
                 </button>
                 <button
                   type="button"
                   disabled={full || action.pending}
                   onClick={() => addText("text")}
                 >
-                  Adicionar caixa de texto
+                  <strong>Frase curta</strong>
+                  <span>Quero aprender a surfar.</span>
                 </button>
                 <button
                   type="button"
                   disabled={full || action.pending}
                   onClick={() => addText("list")}
                 >
-                  Adicionar lista
+                  <strong>Lista de ideias</strong>
+                  <span>• Escolher uma praia</span>
                 </button>
               </div>
             )}
@@ -703,6 +776,7 @@ export function FreeMural({
         <div
           className="free-paper"
           ref={board}
+          data-guide="sheet"
           aria-label="Área do mural livre"
           data-texture={store.data.paper.texture}
           style={{ backgroundColor: store.data.paper.background }}
@@ -712,7 +786,7 @@ export function FreeMural({
         >
           {!items.length && (
             <p className="free-empty">
-              Adicione fotos, textos e figurinhas pelo painel esquerdo.
+              Comece com uma foto, uma frase ou uma figurinha.
             </p>
           )}
           {items.map((item) => {
@@ -737,9 +811,22 @@ export function FreeMural({
                   aria-label={`${{ photo: "Foto", text: "Texto", shape: "Forma", sticker: "Figurinha" }[item.kind]}: ${label(item)}`}
                   aria-pressed={selectedId === item.id}
                   onClick={() => select(item.id)}
-                  onDoubleClick={() => showInspector()}
+                  onDoubleClick={() =>
+                    item.kind === "text"
+                      ? setInlineId(item.id)
+                      : showInspector()
+                  }
                   onPointerDown={(event) => start(event, item, "move")}
-                  onKeyDown={(event) => keyMove(event, item)}
+                  onKeyDown={(event) => {
+                    if (
+                      item.kind === "text" &&
+                      (event.key === "F2" || event.key === "Enter")
+                    ) {
+                      event.preventDefault();
+                      select(item.id);
+                      setInlineId(item.id);
+                    } else keyMove(event, item);
+                  }}
                   {...pointerEvents}
                 >
                   {shown.kind === "photo" && (
@@ -760,13 +847,34 @@ export function FreeMural({
               </div>
             );
           })}
+          {selected?.kind === "text" && inlineId === selected.id && (
+            <div
+              className="book-inline-position"
+              style={{
+                left: `${(selected.x / BOARD_WIDTH) * 100}%`,
+                top: `${(selected.y / BOARD_HEIGHT) * 100}%`,
+                width: `${(selected.width / BOARD_WIDTH) * 100}%`,
+              }}
+            >
+              <InlineText
+                key={selected.id}
+                item={selected}
+                done={(body) => {
+                  setInlineId(null);
+                  if (body !== undefined && body !== selected.body)
+                    update(selected, { body });
+                }}
+              />
+            </div>
+          )}
           {selected &&
+            inlineId !== selected.id &&
             (() => {
               const shown = previewItem(selected);
               return (
                 <div
                   className="book-transform"
-                  aria-label="Alças de transformação"
+                  aria-label="Mudar tamanho ou girar"
                   style={{
                     left: `${(shown.x / BOARD_WIDTH) * 100}%`,
                     top: `${(shown.y / BOARD_HEIGHT) * 100}%`,
@@ -792,7 +900,7 @@ export function FreeMural({
                   <button
                     type="button"
                     className="book-handle handle-rotate"
-                    aria-label="Arrastar para rotacionar"
+                    aria-label="Arraste para girar"
                     data-inside={shown.y < 45}
                     tabIndex={-1}
                     onPointerDown={(event) => start(event, selected, "rotate")}
@@ -800,6 +908,17 @@ export function FreeMural({
                   >
                     <RotateCw size={14} />
                   </button>
+                  {shown.kind === "text" && (
+                    <button
+                      type="button"
+                      className="book-edit-here"
+                      aria-label="Editar texto na folha"
+                      data-inside={shown.y + itemHeight(shown) > 690}
+                      onClick={() => setInlineId(shown.id)}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  )}
                 </div>
               );
             })()}
@@ -813,7 +932,7 @@ export function FreeMural({
           onClick={() =>
             void action.run(
               () => exportFreeMural(store.data, store.repository),
-              "Página preparada para download.",
+              "Imagem pronta para baixar.",
             )
           }
         >
@@ -823,7 +942,7 @@ export function FreeMural({
       <Feedback action={action} />
       {full && (
         <p className="small muted">
-          Limite de {FREE_ITEM_LIMIT} elementos nesta página.
+          Esta página está cheia. Abra outra ou tire algo da folha.
         </p>
       )}
       {inspector &&
@@ -831,10 +950,12 @@ export function FreeMural({
           <>
             {selected && (
               <details className="book-tool" open>
-                <summary>Elemento selecionado</summary>
+                <summary data-guide="format">
+                  Editar o que você escolheu
+                </summary>
                 {selected.kind === "text" && (
                   <TextEditor
-                    key={selected.id}
+                    key={`${selected.id}:${selected.body}`}
                     item={selected}
                     update={(patch) => update(selected, patch)}
                     previewBody={(body) =>
@@ -895,7 +1016,7 @@ export function FreeMural({
                     </label>
                   )}
                   <label>
-                    Rotação (°){" "}
+                    Girar (graus){" "}
                     <input
                       type="number"
                       min={-180}
@@ -917,8 +1038,8 @@ export function FreeMural({
               </details>
             )}
             <details className="book-tool" open={items.length > 0}>
-              <summary>
-                <Layers size={17} /> Camadas
+              <summary data-guide="layers">
+                <Layers size={17} /> Ordem na folha
               </summary>
               {selected && (
                 <div className="book-compact-buttons">
@@ -975,7 +1096,7 @@ export function FreeMural({
               </ol>
             </details>
             <details className="book-tool" open>
-              <summary>
+              <summary data-guide="shapes">
                 <Shapes size={17} /> Formas
               </summary>
               <div className="book-shapes">

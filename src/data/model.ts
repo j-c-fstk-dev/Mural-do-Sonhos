@@ -111,6 +111,7 @@ export const workspaceSchema = z
       journey_completed: z.boolean(),
       template,
       tour_seen: z.boolean().default(false),
+      editor_guide_seen: z.boolean().default(false),
       layout_chosen: z.boolean().default(false),
       active_page: id.nullable().default(null),
       intention: text,

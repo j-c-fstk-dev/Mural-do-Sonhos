@@ -181,9 +181,7 @@ export async function readBackup(file: File) {
     throw new Error("O backup deve ter no máximo 60 MB.");
   const parsed = backupSchema.safeParse(JSON.parse(await file.text()));
   if (!parsed.success)
-    throw new Error(
-      "Esse arquivo não é um backup válido da versão atual do Mural dos Sonhos.",
-    );
+    throw new Error("Este arquivo não é uma cópia válida do Mural dos Sonhos.");
   const { workspace, assets: encoded } = parsed.data;
   if (new Set(encoded.map((asset) => asset.id)).size !== encoded.length)
     throw new Error("O backup contém imagens duplicadas.");

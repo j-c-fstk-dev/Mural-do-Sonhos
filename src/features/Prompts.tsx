@@ -18,34 +18,34 @@ export function Prompts({ store }: ScreenProps) {
     <>
       <PageTitle
         eyebrow="IDEIAS PARA O SEU MURAL"
-        title="Dê uma imagem ao seu sonho."
+        title="Crie uma imagem com IA"
       >
-        Prepare um prompt, copie para uma ferramenta de imagens de sua escolha e
-        depois envie o resultado para o mural.
+        Descreva uma imagem. Depois copie o pedido e cole em um app que crie
+        imagens com IA.
       </PageTitle>
       <div className="prompt-layout">
         <section className="surface">
           <label>
-            Que lugar ou situação você quer representar?
+            Onde a imagem acontece?
             <textarea
               maxLength={1000}
               rows={3}
               value={scene}
               onChange={(event) => setScene(event.target.value)}
-              placeholder="Um ateliê iluminado com minhas criações…"
+              placeholder="Exemplo: uma praia com ondas pequenas"
             />
           </label>
           <label>
-            O que acontece nessa cena?
+            O que aparece na imagem?
             <input
               maxLength={500}
               value={activity}
               onChange={(event) => setActivity(event.target.value)}
-              placeholder="Trabalhando em um projeto autoral"
+              placeholder="Exemplo: uma prancha azul na areia"
             />
           </label>
           <label>
-            Que sensação a imagem deve transmitir?
+            Que clima a imagem deve ter?
             <input
               maxLength={500}
               value={feeling}
@@ -76,19 +76,18 @@ export function Prompts({ store }: ScreenProps) {
               checked={withPerson}
               onChange={(event) => setWithPerson(event.target.checked)}
             />{" "}
-            Incluir instrução para foto de referência
+            Pedir para usar uma foto como exemplo
           </label>
           <p className="small muted">
-            Este app não envia respostas ou fotos para geradores de imagens. Ao
-            usar outra ferramenta, confira os termos, o preço e o tratamento das
-            fotos. Use apenas imagens que você pode utilizar.
+            Leia as regras e veja o preço do outro app. Só use fotos que você
+            tem permissão para usar.
           </p>
         </section>
         <section className="surface prompt-result">
           <WandSparkles size={25} />
-          <h2>Seu prompt</h2>
+          <h2>Seu pedido de imagem</h2>
           <textarea
-            aria-label="Prompt para copiar"
+            aria-label="Pedido pronto para copiar"
             readOnly
             rows={14}
             value={prompt}
@@ -99,11 +98,11 @@ export function Prompts({ store }: ScreenProps) {
               onClick={() =>
                 void action.run(
                   () => navigator.clipboard.writeText(prompt),
-                  "Prompt copiado.",
+                  "Pedido copiado.",
                 )
               }
             >
-              <Copy size={17} /> Copiar prompt
+              <Copy size={17} /> Copiar pedido
             </button>
             <a href="#/">Voltar ao mural →</a>
           </div>
