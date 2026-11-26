@@ -1,0 +1,234 @@
+.free-mural {
+  min-width: 0;
+}
+.free-heading,
+.free-add,
+.free-layer-tools,
+.free-categories {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.free-heading {
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.free-heading .board-title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.free-heading .board-title h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.free-add {
+  margin-bottom: 12px;
+}
+.free-add button,
+.free-layer-tools button,
+.free-categories button {
+  min-height: 44px;
+  padding: 8px 12px;
+  background: #fffdf8;
+  border: 1px solid #dbcfe1;
+  color: #584067;
+  box-shadow: none;
+}
+.free-add button:hover:not(:disabled),
+.free-layer-tools button:hover:not(:disabled),
+.free-categories button:hover:not(:disabled),
+.free-layer-list button:hover:not(:disabled),
+.free-layer-list button[aria-pressed="true"],
+.free-categories button[aria-pressed="true"] {
+  background: #efe5f4;
+  color: #482e59;
+}
+.free-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(208px, 250px);
+  align-items: start;
+  gap: 16px;
+}
+.free-board-area {
+  container-type: inline-size;
+}
+.free-paper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 10px;
+  outline: 1px solid #ddd0bb;
+  box-shadow: 0 6px 22px #67524012;
+}
+.free-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 24px;
+  margin: 0;
+  color: #625267;
+  pointer-events: none;
+}
+.free-item {
+  position: absolute;
+  min-width: 0;
+  min-height: 0;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.free-item:active {
+  cursor: grabbing;
+}
+.free-item:hover:not(:disabled) {
+  background: transparent;
+  transform: none;
+}
+.free-item-photo,
+.free-item-photo:hover:not(:disabled) {
+  background: #fffcf6;
+}
+.free-item[aria-pressed="true"] {
+  outline: 2px solid #76588a;
+  outline-offset: -2px;
+}
+.free-item img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+.free-item .image-placeholder {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 10px;
+}
+.free-hint {
+  margin: 9px 0 0;
+}
+.free-layers {
+  padding: 14px;
+  min-width: 0;
+}
+.free-layers h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  margin: 0;
+}
+.free-layer-tools {
+  margin: 12px 0 8px;
+  gap: 4px;
+}
+.free-layer-tools button {
+  min-width: 44px;
+  padding: 7px;
+  justify-content: center;
+}
+.free-layer-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.free-layer-list button {
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 9px;
+  margin: 2px 0;
+  justify-content: flex-start;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #584067;
+  border-radius: 6px;
+  box-shadow: none;
+}
+.free-layer-list button svg {
+  flex: none;
+}
+.free-layer-list button span,
+.free-photo-choice span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.free-layer-list button[aria-pressed="true"] {
+  border-color: #b99fc8;
+}
+.free-photo-picker,
+.free-sticker-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+.free-categories {
+  margin-bottom: 14px;
+}
+.free-sticker-picker button,
+.free-photo-choice {
+  min-width: 0;
+  width: 100%;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fbf7f1;
+  color: #493653;
+  border: 1px solid #eadfeb;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 12px;
+}
+.free-sticker-picker button:hover:not(:disabled),
+.free-photo-choice:hover:not(:disabled) {
+  background: #efe5f4;
+  color: #482e59;
+}
+.free-sticker-picker img {
+  display: block;
+  width: 58px;
+  height: 58px;
+}
+.free-photo-choice img,
+.free-photo-choice .image-placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.free-photo-choice span {
+  width: 100%;
+}
+.free-gallery-photo > .icon-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .free-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .free-add > button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .free-heading .board-title {
+    width: 100%;
+  }
+}

@@ -5,7 +5,7 @@ import { ArrowRight, Check, Plus, Sparkles } from "lucide-react";
 import { changeTask, localDate, monday, type Task } from "../data/model";
 import { Feedback, PageTitle, type ScreenProps } from "../components/ui";
 import { TaskEditor, TaskRow } from "./Plan";
-import { LocalImage } from "./Mural";
+import { LocalImage } from "../components/LocalImage";
 export function Today({ store }: ScreenProps) {
   const [date, setDate] = useState(localDate);
   const [edit, setEdit] = useState<Task | "new" | null>(null);

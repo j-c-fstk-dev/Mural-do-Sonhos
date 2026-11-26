@@ -23,6 +23,28 @@ const answersSchema = z.object(
   ) as Record<(typeof answerKeys)[number], z.ZodDefault<z.ZodString>>,
 );
 const base = { id, created_at: timestamp, updated_at: timestamp };
+const freeGeometry = {
+  id,
+  x: z.number().min(0).max(1000),
+  y: z.number().min(0).max(750),
+  width: z.number().min(100).max(640),
+};
+const freeItemSchema = z.discriminatedUnion("kind", [
+  z.object({ ...freeGeometry, kind: z.literal("photo"), asset_id: id }),
+  z.object({
+    ...freeGeometry,
+    kind: z.literal("text"),
+    body: z.string().trim().min(1).max(180),
+  }),
+  z.object({
+    ...freeGeometry,
+    kind: z.literal("sticker"),
+    sticker: z.string().regex(/^[a-z-]{1,40}$/),
+  }),
+]);
+export type FreeItem = z.infer<typeof freeItemSchema>;
+export const FREE_ITEM_LIMIT = 100;
+
 export const workspaceSchema = z
   .object({
     schema_version: z.literal(2),
@@ -37,6 +59,7 @@ export const workspaceSchema = z
         "polaroid",
         "mosaic",
         "editorial",
+        "free",
       ]),
       intention: text,
     }),
@@ -84,6 +107,7 @@ export const workspaceSchema = z
         }),
       )
       .max(40),
+    free_items: z.array(freeItemSchema).max(FREE_ITEM_LIMIT).default([]),
     events: z
       .array(
         z.object({
@@ -114,6 +138,7 @@ export const workspaceSchema = z
       data.goals,
       data.tasks,
       data.cards,
+      data.free_items,
       data.events,
       data.reviews,
     ];
@@ -153,7 +178,10 @@ export const workspaceSchema = z
     const gallery = new Set(data.gallery.map((photo) => photo.id));
     if (
       gallery.size !== data.gallery.length ||
-      data.cards.some((card) => card.asset_id && !gallery.has(card.asset_id))
+      data.cards.some((card) => card.asset_id && !gallery.has(card.asset_id)) ||
+      data.free_items.some(
+        (item) => item.kind === "photo" && !gallery.has(item.asset_id),
+      )
     )
       ctx.addIssue({
         code: "custom",

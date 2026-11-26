@@ -1,6 +1,6 @@
 # Mural dos Sonhos
 
-Monte um mural de sonhos com fotos da galeria, frases e cinco layouts em tons pastéis. Organize por arrastar ou por toque. Metas, perguntas guiadas e acompanhamento são opcionais.
+Monte um mural de sonhos em um dos cinco templates ou no modo **Livre**, com fotos, textos e 50 figurinhas de scrapbook. No modo Livre, arraste os elementos pelo mural e use **Camadas** para ajustar tamanho e sobreposição. As duas composições compartilham a galeria, e ambas podem ser baixadas em PNG. Metas, perguntas guiadas e acompanhamento são opcionais.
 
 ## Rodar localmente
 
@@ -27,7 +27,8 @@ Os testes de navegador iniciam a prévia do build na porta 4173. Para verificar 
 
 ## Recursos para teste
 
-- Cinco layouts: Recortes, Essencial, Instantes, Mosaico e Horizonte.
+- Cinco templates: Recortes, Essencial, Instantes, Mosaico e Horizonte.
+- Modo Livre com até 100 elementos, ordenação por camadas e 50 figurinhas em cinco categorias.
 - Galeria com upload múltiplo e compressão; até 40 fotos e 40 recortes.
 - Arrastar pelo mouse ou alça de toque; alternativa acessível: selecionar foto e tocar no espaço. Reordenação por setas.
 - Legendas, frases, relação opcional com metas e exportação do mural em PNG.

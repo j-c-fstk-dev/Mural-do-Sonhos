@@ -6,6 +6,7 @@ import {
   type Workspace,
   workspaceSchema,
 } from "./model";
+import type { Store } from "./useWorkspace";
 import type { Repository } from "./repository";
 import { z } from "zod";
 
@@ -58,6 +59,47 @@ export async function compressImage(file: Blob): Promise<Asset> {
     bitmap.close();
   }
 }
+export async function importGalleryPhotos(
+  files: File[],
+  mutate: Store["mutate"],
+) {
+  if (files.length > 40) throw new Error("A galeria comporta até 40 fotos.");
+  const assets: Asset[] = [];
+  // Decode one photo at a time to limit memory use on mobile.
+  for (const file of files) assets.push(await compressImage(file));
+  const photos = assets.map((asset, index) => ({
+    id: asset.id,
+    label:
+      files[index].name.replace(/\.[^.]+$/, "").slice(0, 500) ||
+      "Imagem do meu sonho",
+    created_at: asset.created_at,
+  }));
+  await mutate(
+    (data) => {
+      if (data.gallery.length + photos.length > 40)
+        throw new Error(
+          "A galeria comporta até 40 fotos. Libere espaço para adicionar mais.",
+        );
+      data.gallery.push(...photos);
+    },
+    { assets },
+  );
+  return photos;
+}
+
+export function removeGalleryPhoto(id: string, mutate: Store["mutate"]) {
+  return mutate(
+    (data) => {
+      data.gallery = data.gallery.filter((photo) => photo.id !== id);
+      data.cards = data.cards.filter((card) => card.asset_id !== id);
+      data.free_items = data.free_items.filter(
+        (item) => item.kind !== "photo" || item.asset_id !== id,
+      );
+    },
+    { removeAssets: [id] },
+  );
+}
+
 export function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
