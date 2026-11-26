@@ -1,3 +1,4 @@
+import { drawPaper, fonts } from "./paper";
 import {
   makeId,
   now,
@@ -91,10 +92,12 @@ export function removeGalleryPhoto(id: string, mutate: Store["mutate"]) {
   return mutate(
     (data) => {
       data.gallery = data.gallery.filter((photo) => photo.id !== id);
-      data.cards = data.cards.filter((card) => card.asset_id !== id);
-      data.free_items = data.free_items.filter(
-        (item) => item.kind !== "photo" || item.asset_id !== id,
-      );
+      for (const page of [data, ...data.pages]) {
+        page.cards = page.cards.filter((card) => card.asset_id !== id);
+        page.free_items = page.free_items.filter(
+          (item) => item.kind !== "photo" || item.asset_id !== id,
+        );
+      }
     },
     { removeAssets: [id] },
   );
@@ -314,15 +317,16 @@ export async function exportMural(data: Workspace, repository: Repository) {
   canvas.width = 1080;
   canvas.height = Math.max(...slots.map((slot) => slot.y + slot.h)) + 65;
   const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#faf7f1";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawPaper(ctx, data.paper, canvas.width, canvas.height);
   ctx.fillStyle = "#463c53";
   ctx.font = "bold 37px Georgia";
   ctx.fillText("Mural dos Sonhos", 40, 65);
-  ctx.font = "24px sans-serif";
+  ctx.fillStyle = data.paper.titleColor;
+  ctx.font = `24px ${fonts[data.paper.titleFont].family}`;
+  await document.fonts.load(ctx.font).catch(() => []);
   wrap(
     ctx,
-    data.dream.description || "Meu próximo capítulo",
+    data.paper.title || data.dream.description || "Mural dos Sonhos",
     40,
     112,
     1000,

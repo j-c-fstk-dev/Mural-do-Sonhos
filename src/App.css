@@ -348,7 +348,7 @@ main {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 19px;
   padding: 24px;
-  background: #f0eadd;
+  background-color: #f0eadd;
   border: 1px solid #e8e0d1;
   border-radius: 12px;
   min-height: 300px;
@@ -462,7 +462,7 @@ main {
   transform: rotate(1.3deg);
 }
 .mural-grid.clean {
-  background: #eeeaf0;
+  background-color: #eeeaf0;
 }
 .clean .mural-card {
   border-radius: 8px;
@@ -472,7 +472,7 @@ main {
   border-radius: 5px;
 }
 .mural-grid.polaroid {
-  background: #e9e3d9;
+  background-color: #e9e3d9;
 }
 .polaroid .mural-card {
   background: #fffdf9;
@@ -488,7 +488,7 @@ main {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   padding: 15px;
-  background: #efe9f0;
+  background-color: #efe9f0;
 }
 .mosaic .board-slot:nth-child(6n + 1) {
   grid-column: span 2;

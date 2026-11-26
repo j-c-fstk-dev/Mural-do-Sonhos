@@ -7,7 +7,10 @@ import {
   Compass,
   Images,
   LoaderCircle,
-  Menu,
+  PanelLeft,
+  BookOpen,
+  History as HistoryIcon,
+  Lightbulb,
   Settings as SettingsIcon,
   Sparkles,
   X,
@@ -15,7 +18,9 @@ import {
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { useWorkspace } from "./data/useWorkspace";
 import { Feedback } from "./components/ui";
-import { Mural } from "./features/Mural";
+import { Book } from "./features/Book";
+import { Tour } from "./features/Tour";
+import "./Book.css";
 import { Journey } from "./features/Journey";
 import { Plan } from "./features/Plan";
 import { History, Today } from "./features/Today";
@@ -29,6 +34,9 @@ const routes = [
   { path: "/hoje", name: "Hoje", icon: CalendarCheck },
   { path: "/plano", name: "Meu caminho", icon: Compass },
   { path: "/revisao", name: "Revisão", icon: Sparkles },
+  { path: "/jornada", name: "Percurso guiado", icon: BookOpen },
+  { path: "/historico", name: "Histórico", icon: HistoryIcon },
+  { path: "/prompts", name: "Ideias para imagens", icon: Lightbulb },
   { path: "/ajustes", name: "Dados e ajustes", icon: SettingsIcon },
 ];
 function currentRoute() {
@@ -37,7 +45,12 @@ function currentRoute() {
 function App() {
   const store = useWorkspace();
   const [route, setRoute] = useState(currentRoute);
-  const [menu, setMenu] = useState(false);
+  const [menu, setMenu] = useState(() => window.innerWidth > 900);
+  const [sidebar, setSidebar] = useState<HTMLDivElement | null>(null);
+  const [replayTour, setReplayTour] = useState(false);
+  function closeMobileSidebar() {
+    if (window.innerWidth <= 900) setMenu(false);
+  }
   const [age, setAge] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
   const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(
@@ -46,13 +59,12 @@ function App() {
   const action = useAction();
   const {
     needRefresh: [needRefresh, setNeedRefresh],
-    offlineReady: [offlineReady, setOfflineReady],
     updateServiceWorker,
   } = useRegisterSW();
   useEffect(() => {
     const navigate = () => {
       setRoute(currentRoute());
-      setMenu(false);
+      closeMobileSidebar();
       window.scrollTo(0, 0);
     };
     const online = () => setOffline(!navigator.onLine);
@@ -173,112 +185,127 @@ function App() {
       >
         Pular para o conteúdo
       </a>
-      <header className="app-header">
+      <header className="book-header">
+        <button
+          className="icon-button"
+          aria-label={menu ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={menu}
+          aria-controls="book-sidebar"
+          onClick={() => setMenu(!menu)}
+        >
+          <PanelLeft size={22} />
+        </button>
         <a href="#/" className="brand">
           <span className="brand-symbol" aria-hidden="true">
             ✳︎
-          </span>
-          <span>
-            Mural dos Sonhos<small>um espaço para o seu amanhã</small>
-          </span>
+          </span>{" "}
+          Mural dos Sonhos
         </a>
-        <button
-          className="icon-button mobile-menu"
-          aria-label={menu ? "Fechar menu" : "Abrir menu"}
-          aria-expanded={menu}
-          aria-controls="main-nav"
-          onClick={() => setMenu(!menu)}
-        >
-          {menu ? <X /> : <Menu />}
-        </button>
-        <nav
-          id="main-nav"
-          className={menu ? "open" : ""}
-          aria-label="Navegação principal"
-        >
-          {routes.map((item) => (
-            <a
-              href={`#${item.path}`}
-              key={item.path}
-              className={route === item.path ? "active" : ""}
-              aria-current={route === item.path ? "page" : undefined}
-            >
-              <item.icon size={17} />
-              {item.name}
-            </a>
-          ))}
-        </nav>
-      </header>
-      <div className="local-banner">
-        <span>
-          <CloudOff size={14} />
-          {offline
-            ? "Sem conexão · seu mural local continua disponível"
-            : "Modo local · salvo neste navegador"}
+        <span className="book-local" title="Os dados ficam neste navegador">
+          <CloudOff size={15} />{" "}
+          {offline ? "Sem conexão" : "Salvo neste navegador"}
         </span>
-        <a href="#/ajustes">
-          Fazer backup <ChevronRight size={13} />
-        </a>
-      </div>
-      <main id="main" tabIndex={-1}>
-        {store.error && (
-          <p className="notice error" role="alert">
-            {store.error}
-          </p>
-        )}
-        {route === "/" ? (
-          <Mural store={loaded} />
-        ) : route === "/hoje" ? (
-          <Today store={loaded} />
-        ) : route === "/plano" ? (
-          <Plan store={loaded} />
-        ) : route === "/jornada" ? (
-          <Journey store={loaded} />
-        ) : route === "/revisao" ? (
-          <Review store={loaded} />
-        ) : route === "/historico" ? (
-          <History store={loaded} />
-        ) : route === "/prompts" ? (
-          <Prompts store={loaded} />
-        ) : route === "/ajustes" ? (
-          <Settings
-            store={loaded}
-            installPrompt={installPrompt}
-            onInstall={() => void install()}
+      </header>
+      <div className="book-shell" data-menu={menu}>
+        {menu && (
+          <button
+            className="book-backdrop"
+            aria-label="Fechar barra lateral"
+            onClick={() => setMenu(false)}
           />
-        ) : (
-          <section className="empty-state">
-            <h1 tabIndex={-1}>Esse recorte ainda não existe.</h1>
-            <a href="#/">Voltar ao mural</a>
-          </section>
         )}
-        <footer>
-          <span>✳︎ Mural dos Sonhos · feito de possibilidades</span>
-          <div>
-            <a href="#/historico">Meu percurso</a>
-            <a href="#/ajustes">Meus dados</a>
-          </div>
-        </footer>
-      </main>
-      {(needRefresh || offlineReady) && (
+        <aside
+          id="book-sidebar"
+          className="book-sidebar"
+          hidden={!menu}
+          aria-label="Menu e biblioteca"
+        >
+          <nav aria-label="Navegação principal">
+            {routes.map((item) => (
+              <a
+                href={`#${item.path}`}
+                key={item.path}
+                onClick={closeMobileSidebar}
+                aria-current={route === item.path ? "page" : undefined}
+              >
+                <item.icon size={17} /> {item.name}
+              </a>
+            ))}
+          </nav>
+          <button
+            className="text-button book-tour-link"
+            onClick={() => setReplayTour(true)}
+          >
+            <Sparkles size={16} /> Ver tour do app
+          </button>
+          <div ref={setSidebar} className="book-library" />
+        </aside>
+        <main
+          className={route === "/" ? "book-main book-main-editor" : "book-main"}
+          id="main"
+          tabIndex={-1}
+        >
+          {store.error && (
+            <p className="notice error" role="alert">
+              {store.error}
+            </p>
+          )}
+          {route === "/" ? (
+            <Book
+              store={loaded}
+              sidebar={sidebar}
+              closeMobileSidebar={closeMobileSidebar}
+              tourSeen={store.data.profile.tour_seen && !replayTour}
+            />
+          ) : route === "/hoje" ? (
+            <Today store={loaded} />
+          ) : route === "/plano" ? (
+            <Plan store={loaded} />
+          ) : route === "/jornada" ? (
+            <Journey store={loaded} />
+          ) : route === "/revisao" ? (
+            <Review store={loaded} />
+          ) : route === "/historico" ? (
+            <History store={loaded} />
+          ) : route === "/prompts" ? (
+            <Prompts store={loaded} />
+          ) : route === "/ajustes" ? (
+            <Settings
+              store={loaded}
+              installPrompt={installPrompt}
+              onInstall={() => void install()}
+            />
+          ) : (
+            <section className="empty-state">
+              <h1 tabIndex={-1}>Esse recorte ainda não existe.</h1>
+              <a href="#/">Voltar ao mural</a>
+            </section>
+          )}
+        </main>
+      </div>
+      {(!store.data.profile.tour_seen || replayTour) && (
+        <Tour
+          onFinish={async () => {
+            await store.mutate((data) => {
+              data.profile.tour_seen = true;
+            });
+            setReplayTour(false);
+          }}
+        />
+      )}
+      {needRefresh && (
         <aside className="pwa-toast" role="status">
           <p>
-            {needRefresh
-              ? "Uma nova versão está disponível. Salve os formulários antes de atualizar."
-              : "A interface está pronta para abrir sem conexão. Mantenha um backup dos seus dados."}
+            Uma nova versão está disponível. Salve os formulários antes de
+            atualizar.
           </p>
-          {needRefresh && (
-            <button onClick={() => void updateServiceWorker(true)}>
-              Atualizar
-            </button>
-          )}
+          <button onClick={() => void updateServiceWorker(true)}>
+            Atualizar
+          </button>
           <button
             className="icon-button"
             aria-label="Fechar aviso"
-            onClick={() => {
-              setNeedRefresh(false);
-              setOfflineReady(false);
-            }}
+            onClick={() => setNeedRefresh(false)}
           >
             <X size={17} />
           </button>

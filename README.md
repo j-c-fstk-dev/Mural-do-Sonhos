@@ -2,6 +2,10 @@
 
 Monte um mural de sonhos em um dos cinco templates ou no modo **Livre**, com fotos, textos e 50 figurinhas de scrapbook. No modo Livre, arraste os elementos pelo mural e use **Camadas** para ajustar tamanho e sobreposição. As duas composições compartilham a galeria, e ambas podem ser baixadas em PNG. Metas, perguntas guiadas e acompanhamento são opcionais.
 
+O tour inicial apresenta a galeria, a edição e as áreas de metas e revisão. A escolha do layout aparece na primeira visita ao mural e depois fica em **Layout da página**, no menu esquerdo. Use as setas ou deslize sobre a folha no celular para folhear o caderno. A galeria é compartilhada pelo caderno.
+
+No modo **Livre**, selecione um elemento e arraste suas alças para mudar tamanho ou rotação. O painel direito reúne as camadas, dez formas, cinco fontes locais, controles de texto e opções de papel. O fundo de uma caixa de texto pode ser transparente ou preenchido com uma cor própria. Cada página é baixada separadamente em PNG. O backup JSON guarda o caderno inteiro.
+
 ## Rodar localmente
 
 Node.js 22.12+ ou 24+.

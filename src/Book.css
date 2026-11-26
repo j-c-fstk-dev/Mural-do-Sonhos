@@ -1,0 +1,423 @@
+.book-header {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 18px;
+  min-height: 57px;
+  background: #fffaf6;
+  border-bottom: 1px solid #e4dcd8;
+}
+.book-header .icon-button {
+  min-height: 44px;
+  min-width: 44px;
+}
+.book-header .brand {
+  font-size: 16px;
+  gap: 6px;
+}
+.book-header .brand-symbol {
+  font-size: 27px;
+  line-height: 1;
+}
+.book-local {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #675a69;
+}
+.book-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.book-shell[data-menu="true"] {
+  grid-template-columns: 238px minmax(0, 1fr);
+}
+.book-sidebar {
+  position: sticky;
+  top: 57px;
+  align-self: start;
+  height: calc(100dvh - 57px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 12px 22px;
+  background: #fffaf6;
+  border-right: 1px solid #e4dcd8;
+  scrollbar-width: thin;
+}
+.book-sidebar nav {
+  display: grid;
+  gap: 2px;
+}
+.book-sidebar nav a,
+.book-sidebar .book-tour-link,
+.book-sidebar .book-layout-button {
+  min-height: 38px;
+  display: flex;
+  text-align: left;
+  justify-content: start;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #52435b;
+  font-size: 13px;
+  text-decoration: none;
+}
+.book-sidebar nav a:hover,
+.book-sidebar nav a[aria-current="page"] {
+  background: #ede4f1;
+  color: #472c57;
+}
+.book-sidebar .book-tour-link {
+  margin-top: 6px;
+}
+.book-sidebar .book-layout-button {
+  width: 100%;
+  order: -1;
+}
+.book-library:not(:empty) {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e4dcd8;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.book-backdrop {
+  display: none;
+}
+.book-shell .book-main {
+  width: 100%;
+  min-width: 0;
+}
+.book-shell .book-main-editor {
+  max-width: none;
+  padding: 0;
+}
+.book-toolbar {
+  position: sticky;
+  top: 57px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 5px 14px;
+  background: #faf5ef;
+  border-bottom: 1px solid #e9e0dc;
+}
+.book-pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+.book-pagination span {
+  min-width: 84px;
+  text-align: center;
+}
+.book-toolbar button {
+  min-height: 38px;
+}
+.book-toolbar .icon-button {
+  min-width: 40px;
+}
+.book-toolbar .text-button {
+  padding: 6px 8px;
+}
+.book-editor {
+  display: flex;
+  align-items: start;
+  min-width: 0;
+}
+.book-stage {
+  perspective: 1600px;
+  min-width: 0;
+  flex: 1;
+  padding: 12px 20px;
+}
+.book-leaf {
+  transform-origin: center left;
+}
+.book-leaf-next {
+  animation: book-turn-next 380ms ease-out both;
+}
+.book-leaf-previous {
+  animation: book-turn-previous 380ms ease-out both;
+  transform-origin: center right;
+}
+@keyframes book-turn-next {
+  from {
+    transform: rotateY(-28deg);
+    opacity: 0.42;
+  }
+  to {
+    transform: rotateY(0);
+    opacity: 1;
+  }
+}
+@keyframes book-turn-previous {
+  from {
+    transform: rotateY(28deg);
+    opacity: 0.42;
+  }
+  to {
+    transform: rotateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-leaf {
+    animation: none;
+  }
+}
+.book-page-title {
+  margin: 0 auto 12px;
+  max-width: 34ch;
+  padding: 0 4px;
+  font-size: clamp(22px, 3.4vw, 42px);
+  line-height: 1.17;
+  text-align: center;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.book-inspector {
+  position: sticky;
+  top: 106px;
+  width: 254px;
+  max-height: calc(100dvh - 106px);
+  flex: 0 0 254px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #fffaf6;
+  border-left: 1px solid #e4dcd8;
+  padding: 10px;
+  scrollbar-width: thin;
+}
+.book-tool {
+  border-bottom: 1px solid #eee3df;
+  padding: 0 4px 10px;
+  font-size: 13px;
+}
+.book-tool summary {
+  min-height: 36px;
+  line-height: 1.4;
+  padding: 8px 0;
+  cursor: pointer;
+  font-weight: 650;
+}
+.book-tool summary svg {
+  display: inline;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+}
+.book-tool label,
+.book-assets label {
+  display: block;
+  margin: 7px 0;
+  font-size: 12px;
+}
+.book-tool select,
+.book-tool input:not([type="color"]),
+.book-tool textarea,
+.book-assets input,
+.book-assets select {
+  width: 100%;
+  min-width: 0;
+  margin-top: 3px;
+  padding: 6px;
+  font-size: 14px;
+}
+.book-tool input[type="color"] {
+  display: block;
+  width: 100%;
+  height: 33px;
+  padding: 2px;
+}
+.book-tool input[type="range"] {
+  padding: 0;
+}
+.book-tool output {
+  float: right;
+}
+.book-field-grid,
+.book-colors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.book-presets,
+.book-shapes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+.book-presets button,
+.book-shapes button {
+  padding: 3px;
+  min-width: 0;
+  height: 40px;
+  width: 100%;
+  border: 1px solid #e2d6e2;
+  border-radius: 6px;
+  background-color: #fffdf9;
+  color: #8f5d79;
+  box-shadow: none;
+}
+.book-presets button[aria-pressed="true"] {
+  outline: 2px solid #805795;
+  outline-offset: -2px;
+}
+.book-compact-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+}
+.book-compact-buttons button {
+  padding: 5px;
+  min-height: 36px;
+}
+.book-compact-buttons button[aria-pressed="true"] {
+  background: #ede4f1;
+  color: #472c57;
+}
+.book-layout-options.layout-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.book-tour h3 {
+  margin: 0 0 8px;
+}
+.book-tour p {
+  margin: 6px 0 18px;
+}
+.book-tour-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.book-gallery {
+  min-width: 0;
+}
+.book-gallery h2 {
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 17px;
+}
+.book-gallery .gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.template-workspace .board-area {
+  width: 100%;
+}
+.template-workspace .template-paper {
+  border-radius: 7px;
+}
+[data-texture="dots"] {
+  background-image: radial-gradient(circle, #49374126 1px, transparent 1.3px);
+  background-size: 18px 18px;
+}
+[data-texture="grid"] {
+  background-image:
+    linear-gradient(#49374126 1px, transparent 1px),
+    linear-gradient(90deg, #49374126 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+[data-texture="ruled"] {
+  background-image: linear-gradient(#49374126 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+[data-texture="gingham"] {
+  background-image:
+    repeating-linear-gradient(0deg, #49374126 0 14px, transparent 14px 28px),
+    repeating-linear-gradient(90deg, #49374126 0 14px, transparent 14px 28px);
+}
+@media (max-width: 1100px) {
+  .book-inspector {
+    position: fixed;
+    z-index: 7;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: min(340px, 100vw);
+    max-height: min(58dvh, 540px);
+    border: 1px solid #ddd0df;
+    border-radius: 14px 0 0 0;
+    box-shadow: 0 -4px 24px #25152e20;
+  }
+}
+@media (max-width: 900px) {
+  .book-shell[data-menu="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .book-sidebar {
+    position: fixed;
+    top: 57px;
+    left: 0;
+    width: min(280px, 85vw);
+    z-index: 11;
+  }
+  .book-header {
+    z-index: 12;
+    padding-inline: 7px;
+  }
+  .book-sidebar nav a,
+  .book-sidebar .book-tour-link,
+  .book-sidebar .book-layout-button {
+    min-height: 44px;
+  }
+  .book-shell .book-backdrop {
+    display: block;
+    position: fixed;
+    inset: 57px 0 0;
+    z-index: 10;
+    background: #32233d54;
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+  .book-toolbar {
+    padding-inline: 6px;
+  }
+  .book-stage {
+    padding: 10px 8px;
+  }
+}
+@media (max-width: 500px) {
+  .book-header .book-local {
+    font-size: 0;
+  }
+  .book-toolbar .text-button,
+  .book-toolbar .icon-button {
+    min-height: 44px;
+  }
+  .book-inspector {
+    width: 100%;
+    border-radius: 14px 14px 0 0;
+  }
+}
+
+.book-close-tools {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .book-inspector .book-close-tools {
+    display: flex;
+    margin-left: auto;
+    min-height: 44px;
+  }
+}

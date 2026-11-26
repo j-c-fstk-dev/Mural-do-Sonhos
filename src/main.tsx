@@ -1,3 +1,8 @@
+import "@fontsource-variable/dm-sans";
+import "@fontsource-variable/playfair-display";
+import "@fontsource-variable/caveat";
+import "@fontsource-variable/fraunces";
+import "@fontsource-variable/jetbrains-mono";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
