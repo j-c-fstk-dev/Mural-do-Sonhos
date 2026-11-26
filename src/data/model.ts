@@ -1,3 +1,4 @@
+import { fonts, shapes, textures } from "./paper";
 import { z } from "zod";
 
 const id = z.uuid();
@@ -23,27 +24,82 @@ const answersSchema = z.object(
   ) as Record<(typeof answerKeys)[number], z.ZodDefault<z.ZodString>>,
 );
 const base = { id, created_at: timestamp, updated_at: timestamp };
+const template = z.enum([
+  "scrapbook",
+  "clean",
+  "polaroid",
+  "mosaic",
+  "editorial",
+  "free",
+]);
+const font = z.enum(Object.keys(fonts) as (keyof typeof fonts)[]);
+const color = z.string().regex(/^#[0-9a-f]{6}$/i);
 const freeGeometry = {
   id,
   x: z.number().min(0).max(1000),
   y: z.number().min(0).max(750),
-  width: z.number().min(100).max(640),
+  width: z.number().min(32).max(1000),
+  height: z.number().min(16).max(750).optional(),
+  rotation: z.number().min(-180).max(180).default(0),
 };
 const freeItemSchema = z.discriminatedUnion("kind", [
   z.object({ ...freeGeometry, kind: z.literal("photo"), asset_id: id }),
   z.object({
     ...freeGeometry,
     kind: z.literal("text"),
-    body: z.string().trim().min(1).max(180),
+    body: z.string().max(1000),
+    font: font.default("serif"),
+    fontSize: z.number().min(10).max(120).default(30),
+    color: color.default("#493741"),
+    backgroundMode: z.enum(["transparent", "filled"]).default("filled"),
+    backgroundColor: color.default("#f7e6b9"),
+    bold: z.boolean().default(false),
+    underline: z.boolean().default(false),
+    list: z.enum(["none", "bullet", "numbered"]).default("none"),
+    curve: z.number().min(-100).max(100).default(0),
   }),
   z.object({
     ...freeGeometry,
     kind: z.literal("sticker"),
     sticker: z.string().regex(/^[a-z-]{1,40}$/),
   }),
+  z.object({
+    ...freeGeometry,
+    kind: z.literal("shape"),
+    shape: z.enum(Object.keys(shapes) as (keyof typeof shapes)[]),
+    color: color.default("#a16e82"),
+  }),
 ]);
 export type FreeItem = z.infer<typeof freeItemSchema>;
 export const FREE_ITEM_LIMIT = 100;
+const freeItems = z.array(freeItemSchema).max(FREE_ITEM_LIMIT);
+const paper = z
+  .object({
+    title: z.string().max(4000).default(""),
+    titleFont: font.default("display"),
+    titleColor: color.default("#493741"),
+    background: color.default("#fcf8ee"),
+    texture: z
+      .enum(Object.keys(textures) as (keyof typeof textures)[])
+      .default("dots"),
+  })
+  .prefault({});
+export type Paper = z.infer<typeof paper>;
+const cards = z
+  .array(
+    z.object({
+      ...base,
+      dream_id: id,
+      goal_id: id.nullable(),
+      kind: z.enum(["image", "quote"]),
+      asset_id: id.nullable(),
+      body: text,
+      caption: text,
+      color: z.enum(["lavender", "peach", "sage", "butter"]),
+      position: z.number().int().min(0).max(39),
+    }),
+  )
+  .max(40);
 
 export const workspaceSchema = z
   .object({
@@ -53,14 +109,10 @@ export const workspaceSchema = z
       age_confirmed: z.boolean(),
       journey_step: z.number().int().min(0).max(11),
       journey_completed: z.boolean(),
-      template: z.enum([
-        "scrapbook",
-        "clean",
-        "polaroid",
-        "mosaic",
-        "editorial",
-        "free",
-      ]),
+      template,
+      tour_seen: z.boolean().default(false),
+      layout_chosen: z.boolean().default(false),
+      active_page: id.nullable().default(null),
       intention: text,
     }),
     dream: z.object({ ...base, description: text, answers: answersSchema }),
@@ -92,22 +144,20 @@ export const workspaceSchema = z
       .array(z.object({ id, label: text, created_at: timestamp }))
       .max(40)
       .default([]),
-    cards: z
+    cards,
+    free_items: freeItems.default([]),
+    paper,
+    pages: z
       .array(
         z.object({
-          ...base,
-          dream_id: id,
-          goal_id: id.nullable(),
-          kind: z.enum(["image", "quote"]),
-          asset_id: id.nullable(),
-          body: text,
-          caption: text,
-          color: z.enum(["lavender", "peach", "sage", "butter"]),
-          position: z.number().int().min(0).max(39),
+          id,
+          template,
+          paper,
+          cards,
+          free_items: freeItems,
         }),
       )
-      .max(40),
-    free_items: z.array(freeItemSchema).max(FREE_ITEM_LIMIT).default([]),
+      .default([]),
     events: z
       .array(
         z.object({
@@ -139,6 +189,8 @@ export const workspaceSchema = z
       data.tasks,
       data.cards,
       data.free_items,
+      data.pages,
+      ...data.pages.flatMap((page) => [page.cards, page.free_items]),
       data.events,
       data.reviews,
     ];
@@ -148,11 +200,19 @@ export const workspaceSchema = z
           code: "custom",
           message: "Identificadores duplicados.",
         });
+    const boards = [data, ...data.pages];
+    const allCards = boards.flatMap((board) => board.cards);
+    const allFreeItems = boards.flatMap((board) => board.free_items);
+    if (
+      data.profile.active_page &&
+      !data.pages.some((page) => page.id === data.profile.active_page)
+    )
+      ctx.addIssue({ code: "custom", message: "Página ativa inválida." });
     const goals = new Set(data.goals.map((goal) => goal.id));
     const tasks = new Set(data.tasks.map((task) => task.id));
     if (
       data.goals.some((goal) => goal.dream_id !== data.dream.id) ||
-      data.cards.some((card) => card.dream_id !== data.dream.id) ||
+      allCards.some((card) => card.dream_id !== data.dream.id) ||
       data.reviews.some((review) => review.dream_id !== data.dream.id)
     )
       ctx.addIssue({
@@ -161,7 +221,7 @@ export const workspaceSchema = z
       });
     if (
       data.tasks.some((task) => !goals.has(task.goal_id)) ||
-      data.cards.some((card) => card.goal_id && !goals.has(card.goal_id))
+      allCards.some((card) => card.goal_id && !goals.has(card.goal_id))
     )
       ctx.addIssue({ code: "custom", message: "Meta de referência inválida." });
     if (data.events.some((event) => !tasks.has(event.task_id)))
@@ -178,8 +238,8 @@ export const workspaceSchema = z
     const gallery = new Set(data.gallery.map((photo) => photo.id));
     if (
       gallery.size !== data.gallery.length ||
-      data.cards.some((card) => card.asset_id && !gallery.has(card.asset_id)) ||
-      data.free_items.some(
+      allCards.some((card) => card.asset_id && !gallery.has(card.asset_id)) ||
+      allFreeItems.some(
         (item) => item.kind === "photo" && !gallery.has(item.asset_id),
       )
     )
@@ -188,15 +248,17 @@ export const workspaceSchema = z
         message: "Galeria de imagens inconsistente.",
       });
     if (
-      new Set(data.cards.map((card) => card.position)).size !==
-      data.cards.length
+      boards.some(
+        ({ cards }) =>
+          new Set(cards.map((card) => card.position)).size !== cards.length,
+      )
     )
       ctx.addIssue({
         code: "custom",
         message: "Dois recortes ocupam o mesmo espaço.",
       });
     if (
-      data.cards.some(
+      allCards.some(
         (card) => (card.kind === "image") !== (card.asset_id !== null),
       )
     )

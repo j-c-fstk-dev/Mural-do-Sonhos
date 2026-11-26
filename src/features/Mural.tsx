@@ -1,14 +1,13 @@
+import { createPortal } from "react-dom";
 import { useAction } from "../data/useAction";
 import { useRef, useState, type PointerEvent } from "react";
 import {
   ArrowDown,
   ArrowUp,
-  Check,
   Download,
   Grip,
   ImagePlus,
   Images,
-  LayoutTemplate,
   Pencil,
   Plus,
   Quote,
@@ -21,52 +20,10 @@ import {
   removeGalleryPhoto,
   sortedCards,
 } from "../data/media";
-import { now, rowBase, type Card, type Workspace } from "../data/model";
+import { now, rowBase, type Card } from "../data/model";
 import { LocalImage } from "../components/LocalImage";
 import { FreeMural } from "./FreeMural";
-import {
-  Feedback,
-  Modal,
-  PageTitle,
-  Submit,
-  type ScreenProps,
-} from "../components/ui";
-const layouts: {
-  id: Workspace["profile"]["template"];
-  name: string;
-  description: string;
-}[] = [
-  {
-    id: "scrapbook",
-    name: "Recortes",
-    description: "Cores suaves, fitas e um toque divertido.",
-  },
-  {
-    id: "clean",
-    name: "Essencial",
-    description: "Uma grade simples para suas imagens brilharem.",
-  },
-  {
-    id: "polaroid",
-    name: "Instantes",
-    description: "Fotos com bordas brancas e espaço para legendas.",
-  },
-  {
-    id: "mosaic",
-    name: "Mosaico",
-    description: "Imagens grandes e pequenas, lado a lado.",
-  },
-  {
-    id: "editorial",
-    name: "Horizonte",
-    description: "Uma imagem em destaque abre seu mural.",
-  },
-  {
-    id: "free",
-    name: "Livre",
-    description: "Sobreponha fotos, frases e figurinhas onde quiser.",
-  },
-];
+import { Feedback, Modal, Submit, type ScreenProps } from "../components/ui";
 type Placement = { kind: "photo" | "card"; id: string };
 function CardEditor({
   store,
@@ -184,10 +141,19 @@ function CardEditor({
     </Modal>
   );
 }
-export function Mural({ store }: ScreenProps) {
+export function Mural({
+  store,
+  sidebar,
+  inspector,
+  closeMobileSidebar,
+  showInspector,
+}: ScreenProps & {
+  sidebar: HTMLElement | null;
+  inspector: HTMLElement | null;
+  closeMobileSidebar: () => void;
+  showInspector: () => void;
+}) {
   const [editor, setEditor] = useState<Card | "quote" | null>(null);
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [title, setTitle] = useState(store.data.dream.description);
   const [selection, setSelection] = useState<Placement | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [pointerDrag, setPointerDrag] = useState(false);
@@ -320,74 +286,24 @@ export function Mural({ store }: ScreenProps) {
     setPointerDrag(false);
     setHover(null);
   }
-  const free = store.data.profile.template === "free";
-  function editTitle() {
-    setTitle(store.data.dream.description);
-    setEditingTitle(true);
-  }
+  if (store.data.profile.template === "free")
+    return (
+      <FreeMural
+        store={store}
+        sidebar={sidebar}
+        inspector={inspector}
+        closeMobileSidebar={closeMobileSidebar}
+        showInspector={showInspector}
+      />
+    );
 
   return (
-    <>
-      <PageTitle
-        eyebrow="ESCOLHA · ADICIONE · ORGANIZE"
-        title="Seu sonho, do seu jeito."
-      >
-        Monte seu mural em poucos passos. Só você decide o que entra nele.
-      </PageTitle>
-      <section className="layout-picker" aria-label="Escolha o layout do mural">
-        <div className="section-heading">
-          <h2>
-            <LayoutTemplate size={20} /> 1. Escolha um layout
-          </h2>
-          <span className="small muted">
-            A galeria de fotos é a mesma em todos os layouts.
-          </span>
-        </div>
-        <div className="layout-options">
-          {layouts.map((layout) => (
-            <button
-              key={layout.id}
-              className={`layout-option ${layout.id === store.data.profile.template ? "active" : ""}`}
-              aria-pressed={layout.id === store.data.profile.template}
-              title={layout.description}
-              disabled={action.pending}
-              onClick={() =>
-                void action
-                  .run(() =>
-                    store.mutate((data) => {
-                      data.profile.template = layout.id;
-                    }),
-                  )
-                  .then((ok) => {
-                    if (ok) setSelection(null);
-                  })
-              }
-            >
-              <span
-                className={`layout-preview ${layout.id}`}
-                aria-hidden="true"
-              >
-                {Array.from({ length: 6 }, (_, i) => (
-                  <i key={i} />
-                ))}
-              </span>
-              <span>
-                {layout.name}
-                {layout.id === store.data.profile.template && (
-                  <Check size={14} />
-                )}
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-      {free ? (
-        <FreeMural store={store} onEditTitle={editTitle} />
-      ) : (
-        <div className="mural-workspace">
-          <aside className="gallery surface">
+    <div className="template-workspace">
+      {sidebar &&
+        createPortal(
+          <div className="book-gallery">
             <h2>
-              <Images size={20} /> 2. Suas fotos
+              <Images size={20} /> Suas fotos
             </h2>
             <p className="small muted">
               Arraste uma foto para o mural. Ou toque nela e depois no espaço
@@ -437,9 +353,10 @@ export function Mural({ store }: ScreenProps) {
                       event.dataTransfer.effectAllowed = "move";
                       setSelection({ kind: "photo", id: photo.id });
                     }}
-                    onClick={() =>
-                      setSelection({ kind: "photo", id: photo.id })
-                    }
+                    onClick={() => {
+                      setSelection({ kind: "photo", id: photo.id });
+                      closeMobileSidebar();
+                    }}
                   >
                     <LocalImage
                       assetId={photo.id}
@@ -494,279 +411,230 @@ export function Mural({ store }: ScreenProps) {
             <a className="small" href="#/prompts">
               Precisa de ideias para imagens? →
             </a>
-          </aside>
-          <section className="board-area">
-            <div className="board-title">
-              <div>
-                <p className="eyebrow">3. MONTE SEU MURAL</p>
-                <h2>
-                  {store.data.dream.description || "Meu próximo capítulo"}
-                </h2>
-              </div>
-              <button
-                className="icon-button"
-                aria-label="Editar título do mural"
-                onClick={editTitle}
-              >
-                <Pencil size={18} />
-              </button>
-            </div>
-            {selection && (
-              <div className="selection-note" role="status">
-                <span>
-                  {pointerDrag
-                    ? "Solte no espaço escolhido."
-                    : "Toque em um espaço para posicionar. Em um espaço ocupado, a foto será trocada."}
-                </span>
-                <button
-                  className="icon-button"
-                  aria-label="Cancelar seleção"
-                  onClick={() => setSelection(null)}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
-            <Feedback action={action} />
-            <div
-              className={`mural-grid ${store.data.profile.template} ${selection ? "placing" : ""}`}
+          </div>,
+          sidebar,
+        )}
+      <section className="board-area">
+        {selection && (
+          <div className="selection-note" role="status">
+            <span>
+              {pointerDrag
+                ? "Solte no espaço escolhido."
+                : "Toque em um espaço para posicionar. Em um espaço ocupado, a foto será trocada."}
+            </span>
+            <button
+              className="icon-button"
+              aria-label="Cancelar seleção"
+              onClick={() => setSelection(null)}
             >
-              {Array.from({ length: slotCount }, (_, position) => {
-                const card = cards.find((row) => row.position === position);
-                return (
-                  <div
-                    key={position}
-                    className={`board-slot ${hover === position ? "drop-hover" : ""} ${card ? "filled" : "vacant"}`}
-                    data-slot={position}
-                    onDragOver={(event) => {
-                      if (
-                        event.dataTransfer.types.includes("application/x-mural")
-                      ) {
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = "move";
-                        setHover(position);
-                      }
-                    }}
-                    onDragLeave={() => setHover(null)}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      try {
-                        const item = JSON.parse(
-                          event.dataTransfer.getData("application/x-mural"),
-                        ) as Placement;
-                        if (
-                          (item.kind === "card" || item.kind === "photo") &&
-                          typeof item.id === "string"
-                        )
-                          place(item, position);
-                      } catch {
-                        setHover(null);
-                      }
+              <X size={16} />
+            </button>
+          </div>
+        )}
+        <Feedback action={action} />
+        <div
+          className={`mural-grid template-paper ${store.data.profile.template} ${selection ? "placing" : ""}`}
+          data-texture={store.data.paper.texture}
+          style={{ backgroundColor: store.data.paper.background }}
+        >
+          {Array.from({ length: slotCount }, (_, position) => {
+            const card = cards.find((row) => row.position === position);
+            return (
+              <div
+                key={position}
+                className={`board-slot ${hover === position ? "drop-hover" : ""} ${card ? "filled" : "vacant"}`}
+                data-slot={position}
+                onDragOver={(event) => {
+                  if (
+                    event.dataTransfer.types.includes("application/x-mural")
+                  ) {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    setHover(position);
+                  }
+                }}
+                onDragLeave={() => setHover(null)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  try {
+                    const item = JSON.parse(
+                      event.dataTransfer.getData("application/x-mural"),
+                    ) as Placement;
+                    if (
+                      (item.kind === "card" || item.kind === "photo") &&
+                      typeof item.id === "string"
+                    )
+                      place(item, position);
+                  } catch {
+                    setHover(null);
+                  }
+                }}
+              >
+                {card ? (
+                  <article
+                    className={`mural-card ${card.color}`}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData(
+                        "application/x-mural",
+                        JSON.stringify({ kind: "card", id: card.id }),
+                      );
+                      event.dataTransfer.effectAllowed = "move";
                     }}
                   >
-                    {card ? (
-                      <article
-                        className={`mural-card ${card.color}`}
-                        draggable
-                        onDragStart={(event) => {
-                          event.dataTransfer.setData(
-                            "application/x-mural",
-                            JSON.stringify({ kind: "card", id: card.id }),
-                          );
-                          event.dataTransfer.effectAllowed = "move";
-                        }}
-                      >
-                        <span className="tape" aria-hidden="true" />
-                        {card.asset_id ? (
-                          <LocalImage
-                            assetId={card.asset_id}
-                            repository={store.repository}
-                            alt={card.body}
-                          />
-                        ) : (
-                          <blockquote>{card.body}</blockquote>
-                        )}
-                        {card.caption && (
-                          <p className="card-caption">{card.caption}</p>
-                        )}
-                        {card.goal_id && (
-                          <a className="goal-link" href="#/plano">
-                            {
-                              store.data.goals.find(
-                                (goal) => goal.id === card.goal_id,
-                              )?.title
-                            }
-                          </a>
-                        )}
-                        <div className="card-tools">
-                          <button
-                            className="drag-handle icon-button"
-                            aria-label={`Arrastar recorte ${position + 1}`}
-                            onPointerDown={(event) =>
-                              pointerDown(event, { kind: "card", id: card.id })
-                            }
-                            onPointerMove={pointerMove}
-                            onPointerUp={pointerUp}
-                            onPointerCancel={() => {
-                              dragged.current = null;
-                              setPointerDrag(false);
-                              setHover(null);
-                            }}
-                          >
-                            <Grip size={17} />
-                          </button>
-                          <button
-                            className="icon-button"
-                            aria-label={`Mover recorte ${position + 1} para trás`}
-                            disabled={position === 0 || action.pending}
-                            onClick={() =>
-                              place({ kind: "card", id: card.id }, position - 1)
-                            }
-                          >
-                            <ArrowUp size={16} />
-                          </button>
-                          <button
-                            className="icon-button"
-                            aria-label={`Mover recorte ${position + 1} para frente`}
-                            disabled={position >= 39 || action.pending}
-                            onClick={() =>
-                              place({ kind: "card", id: card.id }, position + 1)
-                            }
-                          >
-                            <ArrowDown size={16} />
-                          </button>
-                          <button
-                            className="icon-button"
-                            aria-label={`Editar recorte ${position + 1}`}
-                            onClick={() => setEditor(card)}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            className="icon-button"
-                            aria-label={`Retirar recorte ${position + 1} do mural`}
-                            onClick={() => {
-                              if (
-                                !confirm(
-                                  "Retirar este recorte? A foto continuará na galeria.",
-                                )
-                              )
-                                return;
-                              void action.run(() =>
-                                store.mutate((data) => {
-                                  data.cards = data.cards.filter(
-                                    (row) => row.id !== card.id,
-                                  );
-                                }),
-                              );
-                            }}
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      </article>
+                    <span className="tape" aria-hidden="true" />
+                    {card.asset_id ? (
+                      <LocalImage
+                        assetId={card.asset_id}
+                        repository={store.repository}
+                        alt={card.body}
+                      />
                     ) : (
+                      <blockquote>{card.body}</blockquote>
+                    )}
+                    {card.caption && (
+                      <p className="card-caption">{card.caption}</p>
+                    )}
+                    {card.goal_id && (
+                      <a className="goal-link" href="#/plano">
+                        {
+                          store.data.goals.find(
+                            (goal) => goal.id === card.goal_id,
+                          )?.title
+                        }
+                      </a>
+                    )}
+                    <div className="card-tools">
                       <button
-                        className="empty-slot"
-                        aria-label={`Adicionar foto ao espaço ${position + 1}`}
-                        onClick={() => {
-                          if (selection) place(selection, position);
-                          else if (store.data.gallery.length)
-                            document
-                              .querySelector<HTMLElement>(".photo-select")
-                              ?.focus();
-                          else fileInput.current?.click();
+                        className="drag-handle icon-button"
+                        aria-label={`Arrastar recorte ${position + 1}`}
+                        onPointerDown={(event) =>
+                          pointerDown(event, { kind: "card", id: card.id })
+                        }
+                        onPointerMove={pointerMove}
+                        onPointerUp={pointerUp}
+                        onPointerCancel={() => {
+                          dragged.current = null;
+                          setPointerDrag(false);
+                          setHover(null);
                         }}
                       >
-                        <Plus size={23} />
-                        <span>
-                          {selection ? "Colocar aqui" : "Seu próximo sonho"}
-                        </span>
+                        <Grip size={17} />
                       </button>
-                    )}
-                    {selection && card && (
                       <button
-                        className="place-overlay"
-                        aria-label={`Posicionar no espaço ${position + 1}`}
-                        onClick={() => place(selection, position)}
+                        className="icon-button"
+                        aria-label={`Mover recorte ${position + 1} para trás`}
+                        disabled={position === 0 || action.pending}
+                        onClick={() =>
+                          place({ kind: "card", id: card.id }, position - 1)
+                        }
                       >
-                        Colocar aqui
+                        <ArrowUp size={16} />
                       </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="toolbar">
-              <button
-                className="text-button"
-                disabled={slotCount >= 40}
-                onClick={() => setExtraSlots((value) => value + 6)}
-              >
-                <Plus size={17} /> Mais espaços
-              </button>
-              <button
-                disabled={!cards.length || action.pending}
-                onClick={() =>
-                  void action.run(
-                    () => exportMural(store.data, store.repository),
-                    "Mural preparado para download.",
-                  )
-                }
-              >
-                <Download size={17} /> Baixar mural
-              </button>
-            </div>
-            <p className="small muted">
-              Suas fotos ficam neste navegador. Faça um backup para guardar uma
-              cópia ou transferir para outro aparelho.
-            </p>
-          </section>
+                      <button
+                        className="icon-button"
+                        aria-label={`Mover recorte ${position + 1} para frente`}
+                        disabled={position >= 39 || action.pending}
+                        onClick={() =>
+                          place({ kind: "card", id: card.id }, position + 1)
+                        }
+                      >
+                        <ArrowDown size={16} />
+                      </button>
+                      <button
+                        className="icon-button"
+                        aria-label={`Editar recorte ${position + 1}`}
+                        onClick={() => setEditor(card)}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        className="icon-button"
+                        aria-label={`Retirar recorte ${position + 1} do mural`}
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              "Retirar este recorte? A foto continuará na galeria.",
+                            )
+                          )
+                            return;
+                          void action.run(() =>
+                            store.mutate((data) => {
+                              data.cards = data.cards.filter(
+                                (row) => row.id !== card.id,
+                              );
+                            }),
+                          );
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </article>
+                ) : (
+                  <button
+                    className="empty-slot"
+                    aria-label={`Adicionar foto ao espaço ${position + 1}`}
+                    onClick={() => {
+                      if (selection) place(selection, position);
+                      else if (store.data.gallery.length)
+                        document
+                          .querySelector<HTMLElement>(".photo-select")
+                          ?.focus();
+                      else fileInput.current?.click();
+                    }}
+                  >
+                    <Plus size={23} />
+                    <span>
+                      {selection ? "Colocar aqui" : "Seu próximo sonho"}
+                    </span>
+                  </button>
+                )}
+                {selection && card && (
+                  <button
+                    className="place-overlay"
+                    aria-label={`Posicionar no espaço ${position + 1}`}
+                    onClick={() => place(selection, position)}
+                  >
+                    Colocar aqui
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
-      )}
+        <div className="toolbar">
+          <button
+            className="text-button"
+            disabled={slotCount >= 40}
+            onClick={() => setExtraSlots((value) => value + 6)}
+          >
+            <Plus size={17} /> Mais espaços
+          </button>
+          <button
+            disabled={!cards.length || action.pending}
+            onClick={() =>
+              void action.run(
+                () => exportMural(store.data, store.repository),
+                "Mural preparado para download.",
+              )
+            }
+          >
+            <Download size={17} /> Baixar mural
+          </button>
+        </div>
+        <p className="small muted">
+          Suas fotos ficam neste navegador. Faça um backup para guardar uma
+          cópia ou transferir para outro aparelho.
+        </p>
+      </section>
       {editor && (
         <CardEditor
           store={store}
           card={editor === "quote" ? null : editor}
           onClose={() => setEditor(null)}
         />
-      )}{" "}
-      {editingTitle && (
-        <Modal
-          title="Uma frase para o seu futuro"
-          onClose={() => setEditingTitle(false)}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void action
-                .run(() =>
-                  store.mutate((data) => {
-                    data.dream.description = title.trim();
-                    data.dream.updated_at = now();
-                  }),
-                )
-                .then((ok) => {
-                  if (ok) setEditingTitle(false);
-                });
-            }}
-          >
-            <label>
-              O que você quer viver?
-              <textarea
-                autoFocus
-                maxLength={4000}
-                rows={3}
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Uma vida com mais liberdade para criar e viajar…"
-              />
-            </label>
-            <Feedback action={action} />
-            <Submit pending={action.pending}>Salvar título</Submit>
-          </form>
-        </Modal>
       )}
-    </>
+    </div>
   );
 }

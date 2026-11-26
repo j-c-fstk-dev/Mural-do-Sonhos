@@ -302,12 +302,14 @@ export function Plan({ store }: ScreenProps) {
         data.goals = data.goals.filter((row) => row.id !== goal.id);
         data.tasks = data.tasks.filter((task) => !ids.has(task.id));
         data.events = data.events.filter((event) => !ids.has(event.task_id));
-        data.cards.forEach((card) => {
-          if (card.goal_id === goal.id) {
-            card.goal_id = null;
-            card.updated_at = now();
-          }
-        });
+        [data.cards, ...data.pages.map((page) => page.cards)]
+          .flat()
+          .forEach((card) => {
+            if (card.goal_id === goal.id) {
+              card.goal_id = null;
+              card.updated_at = now();
+            }
+          });
       }),
     );
   }

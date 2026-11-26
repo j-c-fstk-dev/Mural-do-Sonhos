@@ -1,18 +1,77 @@
 import { download } from "./media";
 import type { FreeItem, Workspace } from "./model";
+import { drawPaper, fonts, shapes } from "./paper";
 import type { Repository } from "./repository";
 import { getSticker } from "./stickers";
 
 export const BOARD_WIDTH = 1000;
 export const BOARD_HEIGHT = 750;
-export const MIN_ITEM_WIDTH = 100;
-export const MAX_ITEM_WIDTH = 640;
-export const BOARD_PAPER = "#fcf8ee";
-export const BOARD_DOT = "#d9ccb7";
-export const DOT_SPACING = 25;
+export const MIN_ITEM_WIDTH = 32;
+export const MAX_ITEM_WIDTH = BOARD_WIDTH;
 
-export function itemHeight(item: Pick<FreeItem, "kind" | "width">) {
-  return item.width * (item.kind === "sticker" ? 1 : 0.75);
+type TextItem = Extract<FreeItem, { kind: "text" }>;
+type ShapeItem = Extract<FreeItem, { kind: "shape" }>;
+
+let measure: CanvasRenderingContext2D | undefined;
+function textLayout(item: TextItem) {
+  measure ??= document.createElement("canvas").getContext("2d")!;
+  const font = `${item.bold ? 700 : 400} ${item.fontSize}px ${fonts[item.font].family}`;
+  measure.font = font;
+  const ctx = measure;
+  const lineHeight = item.fontSize * 1.24;
+  const padding = 4;
+  const paragraphs = (item.body || " ").split("\n");
+  const markerWidth =
+    item.list === "none"
+      ? 0
+      : ctx.measureText(
+          item.list === "bullet" ? "•  " : `${paragraphs.length}.  `,
+        ).width;
+  const available = Math.max(1, item.width - padding * 2 - markerWidth);
+  const lines = paragraphs.flatMap((paragraph, index) => {
+    const marker =
+      item.list === "bullet"
+        ? "•"
+        : item.list === "numbered"
+          ? `${index + 1}.`
+          : "";
+    const wrapped = [""];
+    for (const word of paragraph.trim().split(/\s+/)) {
+      const last = wrapped.length - 1;
+      const next = wrapped[last] ? `${wrapped[last]} ${word}` : word;
+      if (ctx.measureText(next).width <= available) {
+        wrapped[last] = next;
+      } else {
+        if (wrapped[last]) wrapped.push("");
+        for (const char of word) {
+          const row = wrapped.length - 1;
+          if (
+            wrapped[row] &&
+            ctx.measureText(wrapped[row] + char).width > available
+          )
+            wrapped.push(char);
+          else wrapped[row] += char;
+        }
+      }
+    }
+    return wrapped.map((text, row) => ({
+      text,
+      marker: row === 0 ? marker : "",
+    }));
+  });
+  const height = Math.min(
+    BOARD_HEIGHT,
+    Math.max(
+      16,
+      lines.length * lineHeight + padding * 2 + Math.abs(item.curve) * 2,
+    ),
+  );
+  return { font, lineHeight, lines, markerWidth, height, padding };
+}
+
+export function itemHeight(item: FreeItem) {
+  if (item.kind === "text") return textLayout(item).height;
+  return item.height ?? item.width * (item.kind === "photo" ? 0.75 : 1);
 }
 
 export function fitItem(
@@ -23,105 +82,105 @@ export function fitItem(
 ): FreeItem {
   const next = {
     ...item,
-    width: Math.min(MAX_ITEM_WIDTH, Math.max(MIN_ITEM_WIDTH, width)),
+    width: Math.max(MIN_ITEM_WIDTH, Math.min(MAX_ITEM_WIDTH, width)),
   };
   return {
     ...next,
-    x: Math.round(Math.max(0, Math.min(BOARD_WIDTH - next.width, x))),
-    y: Math.round(Math.max(0, Math.min(BOARD_HEIGHT - itemHeight(next), y))),
+    x: Math.max(0, Math.min(BOARD_WIDTH - next.width, x)),
+    y: Math.max(0, Math.min(BOARD_HEIGHT - itemHeight(next), y)),
   };
 }
 
 export function initialPlacement(item: FreeItem, existing: FreeItem[]) {
-  const columns = [BOARD_WIDTH / 6, BOARD_WIDTH / 2, (BOARD_WIDTH * 5) / 6];
-  const rows = [BOARD_HEIGHT / 6, BOARD_HEIGHT / 2, (BOARD_HEIGHT * 5) / 6];
-  const height = itemHeight(item);
   for (const cell of [4, 0, 2, 6, 8, 1, 3, 5, 7]) {
     const next = fitItem(
       item,
-      columns[cell % 3] - item.width / 2,
-      rows[Math.floor(cell / 3)] - height / 2,
+      (BOARD_WIDTH * (2 * (cell % 3) + 1)) / 6 - item.width / 2,
+      (BOARD_HEIGHT * (2 * Math.floor(cell / 3) + 1)) / 6 -
+        itemHeight(item) / 2,
     );
-    const overlaps = existing.some(
-      (other) =>
-        next.x < other.x + other.width &&
-        next.x + next.width > other.x &&
-        next.y < other.y + itemHeight(other) &&
-        next.y + height > other.y,
-    );
-    if (!overlaps) return next;
+    if (
+      !existing.some(
+        (other) =>
+          next.x < other.x + other.width &&
+          next.x + next.width > other.x &&
+          next.y < other.y + itemHeight(other) &&
+          next.y + itemHeight(next) > other.y,
+      )
+    )
+      return next;
   }
-  const offset = (existing.length % 6) * 24 - 60;
   return fitItem(
     item,
-    (BOARD_WIDTH - item.width) / 2 + offset,
-    (BOARD_HEIGHT - height) / 2 + offset,
+    260 + (existing.length % 6) * 24,
+    260 + (existing.length % 6) * 24,
   );
 }
 
-function escapeXml(text: string) {
-  return text.replace(
-    // oxlint-disable-next-line no-control-regex -- XML forbids these code points.
-    /[&<>\u0000-\u0008\u000b\u000c\u000e-\u001f\ud800-\udfff\ufffe\uffff]/gu,
-    (char) => {
-      if (char === "&") return "&amp;";
-      if (char === "<") return "&lt;";
-      if (char === ">") return "&gt;";
-      return "�";
-    },
-  );
-}
-
-export function noteImage(body: string) {
-  const ctx = document.createElement("canvas").getContext("2d")!;
-  // Use a single SVG for the editor and the download, so wrapping matches.
-  const linesAtSize = (size: number) => {
-    ctx.font = `${size}px Georgia, serif`;
-    return body.split(/\r?\n/).flatMap((paragraph) => {
-      const lines = [""];
-      for (const word of paragraph.split(/\s+/)) {
-        const index = lines.length - 1;
-        const next = lines[index] ? `${lines[index]} ${word}` : word;
-        if (ctx.measureText(next).width <= 262) lines[index] = next;
-        else {
-          if (lines[index]) lines.push("");
-          for (const char of word) {
-            const last = lines.length - 1;
-            if (ctx.measureText(lines[last] + char).width > 262)
-              lines.push(char);
-            else lines[last] += char;
-          }
-        }
-      }
-      return lines;
-    });
-  };
-  let size = 30;
-  let lines = linesAtSize(size);
-  while (size > 12 && lines.length * size * 1.2 > 184) {
-    size -= 2;
-    lines = linesAtSize(size);
+export function drawText(ctx: CanvasRenderingContext2D, item: TextItem) {
+  const { font, lines, lineHeight, markerWidth, padding, height } =
+    textLayout(item);
+  if (item.backgroundMode === "filled") {
+    ctx.fillStyle = item.backgroundColor;
+    ctx.fillRect(0, 0, item.width, height);
   }
-  const limit = Math.floor(184 / (size * 1.2));
-  const visible = lines.slice(0, limit);
-  if (lines.length > limit) visible[limit - 1] = "…";
-  const firstBaseline =
-    (240 - (visible.length - 1) * size * 1.2) / 2 + size * 0.32;
-  const content = visible
-    .map(
-      (line, index) =>
-        `<text x="160" y="${firstBaseline + index * size * 1.2}">${escapeXml(line)}</text>`,
-    )
-    .join("");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240"><rect width="320" height="240" rx="9" fill="#f7e6b9"/><path d="M18 17v206" stroke="#e3c990" stroke-width="2"/><g fill="#493741" font-family="Georgia, serif" font-size="${size}" text-anchor="middle">${content}</g></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  ctx.font = font;
+  ctx.fillStyle = item.color;
+  ctx.strokeStyle = item.color;
+  ctx.lineWidth = Math.max(1, item.fontSize / 15);
+  ctx.textBaseline = "alphabetic";
+  const start = padding + markerWidth;
+  lines.forEach(({ text, marker }, index) => {
+    const y =
+      padding + item.fontSize + index * lineHeight + Math.abs(item.curve);
+    if (marker) ctx.fillText(marker, padding, y);
+    if (!text) return;
+    if (!item.curve) {
+      ctx.fillText(text, start, y);
+      if (item.underline) {
+        ctx.beginPath();
+        ctx.moveTo(start, y + 3);
+        ctx.lineTo(start + ctx.measureText(text).width, y + 3);
+        ctx.stroke();
+      }
+      return;
+    }
+    const width = Math.max(50, ctx.measureText(text).width);
+    let x = 0;
+    for (const char of text) {
+      const advance = ctx.measureText(char).width;
+      const t = (x + advance / 2) / width;
+      const offset = item.curve * (4 * t * (1 - t) - 0.5);
+      const slope = (item.curve * (4 - 8 * t)) / width;
+      ctx.save();
+      ctx.translate(start + x + advance / 2, y + offset);
+      ctx.rotate(Math.atan(slope));
+      ctx.fillText(char, -advance / 2, 0);
+      if (item.underline) {
+        ctx.beginPath();
+        ctx.moveTo(-advance / 2, 3);
+        ctx.lineTo(advance / 2, 3);
+        ctx.stroke();
+      }
+      ctx.restore();
+      x += advance;
+    }
+  });
 }
 
-async function svgImage(src: string) {
-  const image = new Image();
-  image.src = src;
-  await image.decode();
-  return image;
+export function drawShape(ctx: CanvasRenderingContext2D, item: ShapeItem) {
+  const preset = shapes[item.shape];
+  const path = new Path2D(preset.path);
+  ctx.save();
+  ctx.scale(item.width / 100, itemHeight(item) / 100);
+  ctx.fillStyle = item.color;
+  ctx.strokeStyle = item.color;
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  if (preset.filled) ctx.fill(path);
+  else ctx.stroke(path);
+  ctx.restore();
 }
 
 export async function exportFreeMural(data: Workspace, repository: Repository) {
@@ -130,48 +189,49 @@ export async function exportFreeMural(data: Workspace, repository: Repository) {
   canvas.height = BOARD_HEIGHT * 2;
   const ctx = canvas.getContext("2d")!;
   ctx.scale(2, 2);
-  ctx.fillStyle = BOARD_PAPER;
-  ctx.fillRect(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
-  ctx.fillStyle = BOARD_DOT;
-  for (let y = DOT_SPACING / 2; y < BOARD_HEIGHT; y += DOT_SPACING)
-    for (let x = DOT_SPACING / 2; x < BOARD_WIDTH; x += DOT_SPACING) {
-      ctx.beginPath();
-      ctx.arc(x, y, 1.25, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
+  drawPaper(ctx, data.paper, BOARD_WIDTH, BOARD_HEIGHT);
   for (const item of data.free_items) {
-    const { x, y, width } = item;
     const height = itemHeight(item);
+    ctx.save();
+    ctx.translate(item.x + item.width / 2, item.y + height / 2);
+    ctx.rotate((item.rotation * Math.PI) / 180);
+    ctx.translate(-item.width / 2, -height / 2);
+    ctx.beginPath();
+    ctx.rect(0, 0, item.width, height);
+    ctx.clip();
+    if (item.kind === "text") drawText(ctx, item);
+    if (item.kind === "shape") drawShape(ctx, item);
+    if (item.kind === "sticker") {
+      const src = getSticker(item.sticker)?.src;
+      if (!src) throw new Error("Figurinha indisponível.");
+      const image = new Image();
+      image.src = src;
+      await image.decode();
+      ctx.drawImage(image, 0, 0, item.width, height);
+    }
     if (item.kind === "photo") {
       const asset = await repository.asset(item.asset_id);
       if (!asset) throw new Error("Imagem não encontrada. Revise o mural.");
       const image = await createImageBitmap(asset.blob);
       try {
-        const scale = Math.min(width / image.width, height / image.height);
-        ctx.fillStyle = "#fffcf6";
-        ctx.fillRect(x, y, width, height);
-        ctx.drawImage(
-          image,
-          x + (width - image.width * scale) / 2,
-          y + (height - image.height * scale) / 2,
-          image.width * scale,
-          image.height * scale,
-        );
+        if (item.height) ctx.drawImage(image, 0, 0, item.width, height);
+        else {
+          const scale = Math.min(
+            item.width / image.width,
+            height / image.height,
+          );
+          const w = image.width * scale;
+          const h = image.height * scale;
+          ctx.fillStyle = "#fffcf6";
+          ctx.fillRect(0, 0, item.width, height);
+          ctx.drawImage(image, (item.width - w) / 2, (height - h) / 2, w, h);
+        }
       } finally {
         image.close();
       }
-    } else {
-      const src =
-        item.kind === "text"
-          ? noteImage(item.body)
-          : getSticker(item.sticker)?.src;
-      if (!src)
-        throw new Error("Figurinha indisponível. Revise as camadas do mural.");
-      ctx.drawImage(await svgImage(src), x, y, width, height);
     }
+    ctx.restore();
   }
-
   const png = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
