@@ -37,7 +37,7 @@ function CardEditor({
   const action = useAction();
   return (
     <Modal
-      title={card ? "Editar recorte" : "Uma frase para o mural"}
+      title={card ? "Editar cartão" : "Uma frase para o mural"}
       onClose={onClose}
     >
       <form
@@ -59,7 +59,9 @@ function CardEditor({
                   );
                 else {
                   if (data.cards.length >= 40)
-                    throw new Error("O limite desta versão é de 40 recortes.");
+                    throw new Error(
+                      "Esta folha já tem 40 cartões. Abra outra ou tire um cartão.",
+                    );
                   const position = Array.from(
                     { length: 40 },
                     (_, index) => index,
@@ -87,9 +89,7 @@ function CardEditor({
         }}
       >
         <label>
-          {card?.kind === "image"
-            ? "Descrição da imagem (acessibilidade)"
-            : "Sua frase"}
+          {card?.kind === "image" ? "O que aparece na foto?" : "Sua frase"}
           <textarea
             autoFocus
             required
@@ -108,7 +108,7 @@ function CardEditor({
           />
         </label>
         <label>
-          Cor do recorte
+          Cor do cartão
           <select
             value={color}
             onChange={(event) => setColor(event.target.value as Card["color"])}
@@ -121,12 +121,12 @@ function CardEditor({
         </label>
         {store.data.goals.length > 0 && (
           <label>
-            Relacionar a uma meta
+            Ligar a uma meta
             <select
               value={goalId}
               onChange={(event) => setGoalId(event.target.value)}
             >
-              <option value="">Meu sonho como um todo</option>
+              <option value="">Nenhuma meta</option>
               {store.data.goals.map((goal) => (
                 <option key={goal.id} value={goal.id}>
                   {goal.title}
@@ -136,7 +136,7 @@ function CardEditor({
           </label>
         )}
         <Feedback action={action} />
-        <Submit pending={action.pending}>Salvar recorte</Submit>
+        <Submit pending={action.pending}>Salvar cartão</Submit>
       </form>
     </Modal>
   );
@@ -221,7 +221,7 @@ export function Mural({
                 });
             }
           }),
-        "Recorte posicionado.",
+        "Cartão na folha.",
       )
       .then((ok) => {
         if (ok) setSelection(null);
@@ -238,10 +238,7 @@ export function Mural({
     );
   }
   function removePhoto(id: string) {
-    if (
-      !confirm("Excluir esta foto da galeria, dos templates e do mural livre?")
-    )
-      return;
+    if (!confirm("Apagar esta foto de todas as páginas e da galeria?")) return;
     void action
       .run(() => removeGalleryPhoto(id, store.mutate))
       .then((ok) => {
@@ -301,20 +298,20 @@ export function Mural({
     <div className="template-workspace">
       {sidebar &&
         createPortal(
-          <div className="book-gallery">
+          <div className="book-gallery" data-guide="photos">
             <h2>
               <Images size={20} /> Suas fotos
             </h2>
             <p className="small muted">
-              Arraste uma foto para o mural. Ou toque nela e depois no espaço
-              escolhido.
+              Toque em uma foto e depois em um espaço da folha. Você também pode
+              arrastar.
             </p>
             <button
               className="upload-button"
               onClick={() => fileInput.current?.click()}
               disabled={action.pending || store.data.gallery.length >= 40}
             >
-              <ImagePlus size={20} /> Subir da galeria
+              <ImagePlus size={20} /> Escolher fotos
             </button>
             <input
               className="sr-only"
@@ -396,9 +393,7 @@ export function Mural({
             {!store.data.gallery.length && (
               <div className="gallery-empty">
                 <Images size={28} />
-                <p>
-                  Fotos de lugares, momentos e experiências que você quer viver.
-                </p>
+                <p>Exemplo: uma foto do lugar que você quer visitar.</p>
               </div>
             )}
             <button
@@ -406,10 +401,10 @@ export function Mural({
               onClick={() => setEditor("quote")}
               disabled={cards.length >= 40}
             >
-              <Quote size={17} /> Adicionar uma frase
+              <Quote size={17} /> Adicionar frase
             </button>
             <a className="small" href="#/prompts">
-              Precisa de ideias para imagens? →
+              Quer criar uma imagem? →
             </a>
           </div>,
           sidebar,
@@ -420,7 +415,7 @@ export function Mural({
             <span>
               {pointerDrag
                 ? "Solte no espaço escolhido."
-                : "Toque em um espaço para posicionar. Em um espaço ocupado, a foto será trocada."}
+                : "Toque onde a foto deve ficar. Se já tiver outra, ela será trocada."}
             </span>
             <button
               className="icon-button"
@@ -433,6 +428,7 @@ export function Mural({
         )}
         <Feedback action={action} />
         <div
+          data-guide="sheet"
           className={`mural-grid template-paper ${store.data.profile.template} ${selection ? "placing" : ""}`}
           data-texture={store.data.paper.texture}
           style={{ backgroundColor: store.data.paper.background }}
@@ -543,7 +539,7 @@ export function Mural({
                       </button>
                       <button
                         className="icon-button"
-                        aria-label={`Editar recorte ${position + 1}`}
+                        aria-label={`Editar cartão ${position + 1}`}
                         onClick={() => setEditor(card)}
                       >
                         <Pencil size={16} />
@@ -554,7 +550,7 @@ export function Mural({
                         onClick={() => {
                           if (
                             !confirm(
-                              "Retirar este recorte? A foto continuará na galeria.",
+                              "Tirar este cartão da folha? A foto fica na galeria.",
                             )
                           )
                             return;
@@ -586,7 +582,7 @@ export function Mural({
                   >
                     <Plus size={23} />
                     <span>
-                      {selection ? "Colocar aqui" : "Seu próximo sonho"}
+                      {selection ? "Colocar aqui" : "Colocar foto aqui"}
                     </span>
                   </button>
                 )}
@@ -609,7 +605,7 @@ export function Mural({
             disabled={slotCount >= 40}
             onClick={() => setExtraSlots((value) => value + 6)}
           >
-            <Plus size={17} /> Mais espaços
+            <Plus size={17} /> Adicionar espaços
           </button>
           <button
             disabled={!cards.length || action.pending}
@@ -624,8 +620,8 @@ export function Mural({
           </button>
         </div>
         <p className="small muted">
-          Suas fotos ficam neste navegador. Faça um backup para guardar uma
-          cópia ou transferir para outro aparelho.
+          Para levar suas fotos a outro aparelho, guarde uma cópia em Cópias e
+          ajustes.
         </p>
       </section>
       {editor && (

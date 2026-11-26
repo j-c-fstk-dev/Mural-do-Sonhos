@@ -31,10 +31,7 @@ export function TaskEditor({
   const [date, setDate] = useState(task?.scheduled_on || "");
   const action = useAction();
   return (
-    <Modal
-      title={task ? "Adaptar meu passo" : "Um novo passo"}
-      onClose={onClose}
-    >
+    <Modal title={task ? "Editar passo" : "Novo passo"} onClose={onClose}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -67,7 +64,7 @@ export function TaskEditor({
         }}
       >
         <label>
-          Qual ação cabe na sua realidade?
+          O que você vai fazer?
           <input
             autoFocus
             required
@@ -77,7 +74,7 @@ export function TaskEditor({
           />
         </label>
         <label>
-          Meta relacionada
+          Para qual meta?
           <select
             required
             value={goalId}
@@ -120,10 +117,7 @@ function GoalEditor({
   const [alternative, setAlternative] = useState(goal?.alternative || "");
   const action = useAction();
   return (
-    <Modal
-      title={goal ? "Ajustar minha meta" : "Uma meta para começar"}
-      onClose={onClose}
-    >
+    <Modal title={goal ? "Editar meta" : "Nova meta"} onClose={onClose}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -158,7 +152,7 @@ function GoalEditor({
         }}
       >
         <label>
-          Qual resultado concreto você quer alcançar?
+          O que você quer conseguir?
           <input
             autoFocus
             required
@@ -168,7 +162,7 @@ function GoalEditor({
           />
         </label>
         <label>
-          Prazo desejado <span className="muted">(opcional)</span>
+          Até quando? <span className="muted">(opcional)</span>
           <input
             type="date"
             value={date}
@@ -185,7 +179,7 @@ function GoalEditor({
           />
         </label>
         <label>
-          Se isso acontecer, o que você pode fazer?
+          O que pode ajudar se isso acontecer?
           <textarea
             rows={2}
             maxLength={4000}
@@ -206,7 +200,7 @@ export function TaskRow({
 }: ScreenProps & { task: Task; onEdit: (task: Task) => void }) {
   const action = useAction();
   async function remove() {
-    if (!confirm("Excluir esta ação e seu histórico?")) return;
+    if (!confirm("Apagar este passo e as mudanças dele?")) return;
     await action.run(() =>
       store.mutate((data) => {
         data.tasks = data.tasks.filter((row) => row.id !== task.id);
@@ -288,7 +282,7 @@ export function Plan({ store }: ScreenProps) {
   async function removeGoal(goal: Goal) {
     if (
       !confirm(
-        "Excluir esta meta e suas ações? As imagens continuam no mural, sem vínculo com esta meta.",
+        "Apagar esta meta e todos os passos dela? As fotos vão ficar no mural.",
       )
     )
       return;
@@ -315,14 +309,13 @@ export function Plan({ store }: ScreenProps) {
   }
   return (
     <>
-      <PageTitle eyebrow="DO SONHO AO PRÓXIMO PASSO" title="Meu caminho">
-        Um sonho amplo. Metas possíveis. Um passo de cada vez.
+      <PageTitle eyebrow="MEU PLANO" title="Metas e passos">
+        Uma meta é algo que você quer conseguir. Um passo é o que você faz para
+        chegar lá.
       </PageTitle>
       <section className="dream-banner">
         <span className="eyebrow">MEU SONHO PRINCIPAL</span>
-        <h2>
-          {store.data.dream.description || "Que vida você quer construir?"}
-        </h2>
+        <h2>{store.data.dream.description || "Qual é o seu sonho?"}</h2>
         <div className="inline-actions">
           <button
             className="text-button"
@@ -331,9 +324,9 @@ export function Plan({ store }: ScreenProps) {
               setEditingDream(true);
             }}
           >
-            <Pencil size={15} /> Editar descrição
+            <Pencil size={15} /> Editar meu sonho
           </button>
-          <a href="#/jornada">Rever perguntas →</a>
+          <a href="#/jornada">Ver perguntas sobre meu sonho →</a>
         </div>
       </section>
       <div className="section-heading">
@@ -347,8 +340,11 @@ export function Plan({ store }: ScreenProps) {
       </div>
       <Feedback action={action} />
       {!store.data.goals.length && (
-        <Empty title="Encontre seu primeiro avanço">
-          <p>Qual resultado concreto aproximaria você do seu sonho?</p>
+        <Empty title="Crie uma meta">
+          <p>
+            Exemplo: se seu sonho é tocar violão, uma meta pode ser aprender uma
+            música.
+          </p>
           <button onClick={() => setGoalEditor("new")}>
             Criar primeira meta
           </button>
@@ -385,15 +381,14 @@ export function Plan({ store }: ScreenProps) {
                 </div>
               </div>
               <p className="small muted">
-                {done} de {tasks.length} passos concluídos · isso acompanha suas
-                ações, não mede todo o sonho.
+                {done} de {tasks.length} passos feitos
               </p>
               {goal.obstacle && (
                 <p className="obstacle">
-                  <strong>Se aparecer:</strong> {goal.obstacle}
+                  <strong>O que pode atrapalhar:</strong> {goal.obstacle}
                   <br />
-                  <strong>Posso tentar:</strong>{" "}
-                  {goal.alternative || "Ainda vou escolher uma alternativa."}
+                  <strong>O que posso fazer:</strong>{" "}
+                  {goal.alternative || "Ainda não escrevi uma ideia."}
                 </p>
               )}
               <div>
@@ -456,7 +451,7 @@ export function Plan({ store }: ScreenProps) {
             }}
           >
             <label>
-              Uma descrição da vida que quero construir
+              O que você quer fazer um dia?
               <textarea
                 autoFocus
                 required

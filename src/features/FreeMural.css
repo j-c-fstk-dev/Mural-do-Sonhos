@@ -297,3 +297,75 @@
 .book-transform .handle-rotate[data-inside="true"] {
   transform: translate(-50%, 6px);
 }
+
+.book-transform .book-edit-here {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 4px);
+  min-width: 36px;
+  min-height: 36px;
+  padding: 5px;
+  pointer-events: auto;
+  color: #633c79;
+  background: #fff;
+  border: 1px solid #704885;
+  border-radius: 7px;
+  box-shadow: none;
+}
+.book-transform .book-edit-here[data-inside="true"] {
+  top: 0;
+  transform: translate(-50%, calc(-100% - 4px));
+}
+.book-inline-position {
+  position: absolute;
+  z-index: 4;
+}
+.book-inline-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  min-width: max(140px, 100%);
+  padding: 5px;
+  background: #fffdf8;
+  border: 2px solid #704885;
+  border-radius: 8px;
+}
+.book-inline-text[data-left="true"] {
+  left: auto;
+  right: 0;
+}
+.book-inline-text[data-up="true"] {
+  top: auto;
+  bottom: 0;
+}
+.book-inline-text textarea {
+  display: block;
+  margin: 0 0 4px;
+  width: 100%;
+  min-height: 50px;
+  padding: 4px;
+  font-size: 16px;
+}
+.book-inline-text button {
+  min-height: 35px;
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+.book-text-insert button {
+  display: grid;
+  justify-items: start;
+  text-align: left;
+  gap: 2px;
+  color: #50385c;
+  background: #fffdf9;
+  border: 1px solid #ddcfe1;
+}
+.book-text-insert button:hover:not(:disabled) {
+  color: #422653;
+  background: #efe5f4;
+}
+.book-text-insert button span {
+  font-weight: 400;
+}

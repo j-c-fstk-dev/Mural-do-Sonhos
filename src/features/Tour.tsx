@@ -1,35 +1,34 @@
 import { useState } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   BookOpen,
+  CalendarCheck,
   Compass,
   Images,
-  PanelRight,
 } from "lucide-react";
 import { Feedback, Modal } from "../components/ui";
 import { useAction } from "../data/useAction";
 
 const steps = [
   {
-    icon: BookOpen,
-    title: "Comece por uma página",
-    body: "Escolha um template para organizar seus recortes em espaços prontos ou escolha Livre para montar a página do seu jeito. Crie novas páginas para separar sonhos, temas ou etapas.",
-  },
-  {
     icon: Images,
-    title: "Traga sua ideia para o papel",
-    body: "Abra o painel esquerdo e use a galeria, os textos e as figurinhas. No modo Livre, arraste os elementos até onde quiser e use as alças para ajustar o tamanho.",
+    title: "Junte ideias no mural",
+    body: "Em Meu mural, coloque uma foto, uma frase e uma figurinha. Exemplo: uma foto da praia e a frase «Quero aprender a surfar».",
   },
   {
-    icon: PanelRight,
-    title: "Ajuste os detalhes",
-    body: "No painel direito, dê um título à página, mude o papel, adicione formas e organize as camadas. Ao selecionar um texto, aparecem os controles de fonte, cor e formatação.",
+    icon: BookOpen,
+    title: "Use uma folha para cada ideia",
+    body: "Toque em Nova página para começar outra folha. As setas viram as páginas do caderno.",
   },
   {
     icon: Compass,
-    title: "Transforme inspiração em passos",
-    body: "Use Meu caminho para criar metas e ações, Hoje para acompanhar o próximo passo e Revisão para olhar a semana. Em Dados e ajustes você pode guardar um backup do seu caderno.",
+    title: "Escolha algo para fazer",
+    body: "Abra Metas e passos. Se seu sonho é aprender violão, uma meta pode ser tocar uma música. O primeiro passo pode ser aprender um acorde.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Veja como foi",
+    body: "Em Hoje, marque o passo que você fez. Em Minha semana, escreva o que deu certo e o que quer tentar depois.",
   },
 ];
 
@@ -40,7 +39,7 @@ export function Tour({ onFinish }: { onFinish: () => Promise<void> }) {
   const last = index === steps.length - 1;
   const finish = () => void action.run(onFinish);
   return (
-    <Modal title="Conheça seu caderno" onClose={finish}>
+    <Modal title="Conheça o app" onClose={finish}>
       <div className="book-tour" aria-live="polite">
         <step.icon size={28} />
         <p className="small muted">
@@ -56,8 +55,7 @@ export function Tour({ onFinish }: { onFinish: () => Promise<void> }) {
           onClick={index ? () => setIndex(index - 1) : finish}
           disabled={action.pending}
         >
-          {index > 0 && <ArrowLeft size={16} />}{" "}
-          {index ? "Voltar" : "Pular tour"}
+          {index ? "Voltar" : "Pular apresentação"}
         </button>
         <button
           onClick={last ? finish : () => setIndex(index + 1)}

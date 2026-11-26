@@ -25,11 +25,8 @@ export function Review({ store }: ScreenProps) {
   const selected = store.data.reviews.find((row) => row.id === editingId);
   return (
     <>
-      <PageTitle
-        eyebrow="RECONHECER · APRENDER · AJUSTAR"
-        title="Uma pausa para revisar"
-      >
-        Seu plano serve à sua vida. Pode mudar quando você precisar.
+      <PageTitle eyebrow="COMO FOI?" title="Minha semana">
+        Anote o que aconteceu e o que você quer tentar na próxima semana.
       </PageTitle>
       <div className="review-layout">
         <section className="surface">
@@ -62,12 +59,12 @@ export function Review({ store }: ScreenProps) {
                         next_step: next.trim(),
                       });
                   }),
-                "Revisão salva. Você pode ajustar seus próximos passos no caminho.",
+                "Sua semana foi salva.",
               );
             }}
           >
             <label>
-              O que você conseguiu viver, fazer ou aprender?
+              O que deu certo?
               <textarea
                 required
                 rows={3}
@@ -77,7 +74,7 @@ export function Review({ store }: ScreenProps) {
               />
             </label>
             <label>
-              O que ficou difícil ou deixou de fazer sentido?
+              O que foi difícil?
               <textarea
                 rows={3}
                 maxLength={4000}
@@ -86,7 +83,7 @@ export function Review({ store }: ScreenProps) {
               />
             </label>
             <label>
-              Qual ajuste você quer experimentar?
+              O que você quer tentar agora?
               <textarea
                 rows={3}
                 maxLength={4000}
@@ -95,20 +92,19 @@ export function Review({ store }: ScreenProps) {
               />
             </label>
             <p className="small muted">
-              Esta reflexão não altera tarefas automaticamente. Você escolhe o
-              que mudar.
+              Se quiser mudar um passo, abra Metas e passos.
             </p>
             <Feedback action={action} />
             <div className="inline-actions">
-              <Submit pending={action.pending}>Salvar revisão</Submit>
-              <a href="#/plano">Ajustar meu caminho →</a>
+              <Submit pending={action.pending}>Salvar minha semana</Submit>
+              <a href="#/plano">Ver metas e passos →</a>
             </div>
           </form>
         </section>
         <aside className="surface review-history">
-          <h2>Minhas revisões</h2>
+          <h2>Semanas passadas</h2>
           {!store.data.reviews.length && (
-            <p className="muted">Sua primeira revisão começa aqui.</p>
+            <p className="muted">Suas anotações vão aparecer aqui.</p>
           )}
           {store.data.reviews.map((row) => (
             <button

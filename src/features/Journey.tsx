@@ -6,58 +6,54 @@ import { Feedback, Submit, type ScreenProps } from "../components/ui";
 const questions = [
   [
     "wish",
-    "O que você gostaria de viver ou construir?",
-    "Não precisa encontrar as palavras perfeitas.",
+    "O que você quer fazer um dia?",
+    "Exemplo: quero aprender a desenhar.",
   ],
   [
     "scene",
-    "Como seria um dia comum dessa vida?",
-    "Onde você está? O que está fazendo? Pense em uma cena.",
+    "Como seria um dia com esse sonho realizado?",
+    "Exemplo: estou no parque, desenhando as árvores.",
   ],
   [
     "feeling",
     "Como você gostaria de se sentir?",
-    "Com tranquilidade, autonomia, entusiasmo… O que importa para você?",
+    "Exemplo: quero me sentir feliz e tranquilo.",
   ],
   [
     "reason",
     "Por que esse sonho importa para você?",
-    "Pense no que faz sentido para você, além das expectativas dos outros.",
+    "Exemplo: gosto de desenhar porque posso inventar coisas.",
   ],
   [
     "resources",
-    "O que você já tem a seu favor?",
-    "Uma habilidade, uma pessoa, um recurso ou algo que já aprendeu.",
+    "O que já pode ajudar você?",
+    "Exemplo: tenho um caderno e uma amiga que desenha.",
   ],
   [
     "obstacle",
-    "O que pode dificultar seu caminho?",
-    "Escolha uma dificuldade que você possa enfrentar ou contornar.",
+    "O que pode atrapalhar?",
+    "Exemplo: fico sem tempo durante a semana.",
   ],
-  [
-    "time",
-    "Quanto tempo cabe na sua rotina?",
-    "Pode ser dez minutos. Escolha algo possível na sua vida atual.",
-  ],
+  ["time", "Quanto tempo você pode usar?", "Exemplo: dez minutos no sábado."],
   [
     "goal",
-    "Qual resultado mostraria um primeiro avanço?",
-    "Uma meta concreta. Por exemplo: montar um portfólio com três trabalhos.",
+    "O que você quer conseguir primeiro?",
+    "Exemplo: terminar um desenho para pendurar no quarto.",
   ],
   [
     "action",
-    "Qual é o menor passo que você pode dar?",
-    "Algo específico: separar três referências, escrever um parágrafo, enviar uma mensagem.",
+    "Qual é o primeiro passo?",
+    "Exemplo: escolher um lápis e desenhar uma árvore.",
   ],
   [
     "alternative",
-    "Se a dificuldade aparecer, como você pode adaptar?",
-    "Se acontecer…, então eu posso…",
+    "Se algo atrapalhar, o que você pode tentar?",
+    "Exemplo: se chover, desenho perto da janela.",
   ],
   [
     "dream",
-    "Como você descreveria seu sonho principal?",
-    "Quero construir uma vida em que eu possa…, com mais… e espaço para…",
+    "Como você contaria seu sonho a um amigo?",
+    "Exemplo: quero aprender a desenhar os lugares de que gosto.",
   ],
 ] as const;
 function answer(data: Workspace, step: number) {
@@ -77,11 +73,9 @@ export function Journey({ store }: ScreenProps) {
   const adaptive =
     step === 1
       ? {
-          "Tenho muitas ideias":
-            "Qual ideia faria mais diferença na sua vida agora?",
-          "Já comecei": "O que você está construindo e onde sente que travou?",
-          "Quero descobrir":
-            "O que você gostaria que tivesse mais espaço na sua vida?",
+          "Tenho muitas ideias": "Qual ideia você quer tentar primeiro?",
+          "Já comecei": "O que você começou? O que ficou difícil?",
+          "Quero descobrir": "O que você gostaria de fazer mais vezes?",
         }[data.dream.answers.start]
       : null;
   async function move(direction: number, exit = false) {
@@ -140,7 +134,7 @@ export function Journey({ store }: ScreenProps) {
     return (
       <section className="journey completion">
         <Compass size={42} />
-        <h1 tabIndex={-1}>Seu caminho já começou.</h1>
+        <h1 tabIndex={-1}>Seu sonho está salvo</h1>
         <p>
           Sua visão está salva. Agora você pode montar o mural, ajustar as metas
           e escolher o passo de hoje.
@@ -151,10 +145,7 @@ export function Journey({ store }: ScreenProps) {
         <a href="#/plano" className="button secondary">
           Ver meu plano
         </a>
-        <p className="muted">
-          Revisar as respostas não duplica suas metas. Os ajustes do plano são
-          feitos em “Meu caminho”.
-        </p>
+        <p className="muted">Para mudar suas metas, abra Metas e passos.</p>
       </section>
     );
   return (
@@ -166,7 +157,7 @@ export function Journey({ store }: ScreenProps) {
       >
         <ArrowLeft size={16} /> Salvar e sair
       </button>
-      <p className="eyebrow">CLAREAR · IMAGINAR · AGIR</p>
+      <p className="eyebrow">MEU SONHO</p>
       <div className="progress-label">
         <span>Passo {step + 1} de 12</span>
         <span>{Math.round(((step + 1) / 12) * 100)}%</span>
@@ -180,16 +171,16 @@ export function Journey({ store }: ScreenProps) {
       >
         <h1 tabIndex={-1}>
           <label htmlFor="answer">
-            {adaptive || prompt?.[1] || "Como você chega aqui hoje?"}
+            {adaptive || prompt?.[1] || "Você já tem um sonho em mente?"}
           </label>
         </h1>
         <p id="hint">
           {prompt?.[2] ||
-            "Você não precisa ter tudo resolvido. Vamos encontrar uma direção que faça sentido."}
+            "Escolha a opção mais parecida com o que você sente agora."}
         </p>
         {step === 0 ? (
           <fieldset className="options" disabled={action.pending}>
-            <legend className="sr-only">Como você chega aqui hoje?</legend>
+            <legend className="sr-only">Você já tem um sonho em mente?</legend>
             {[
               "Tenho um sonho",
               "Tenho muitas ideias",
@@ -236,7 +227,7 @@ export function Journey({ store }: ScreenProps) {
           <div>
             {value.trim() ? (
               <Submit pending={action.pending}>
-                {step === 11 ? "Ver meu caminho" : "Continuar"}{" "}
+                {step === 11 ? "Ver metas e passos" : "Continuar"}{" "}
                 <ArrowRight size={17} />
               </Submit>
             ) : (
@@ -249,8 +240,7 @@ export function Journey({ store }: ScreenProps) {
       </form>
       {data.profile.journey_completed && (
         <p className="small muted">
-          Rever respostas não altera metas existentes. Edite as metas em “Meu
-          caminho”.
+          Para mudar suas metas, abra Metas e passos.
         </p>
       )}
     </section>

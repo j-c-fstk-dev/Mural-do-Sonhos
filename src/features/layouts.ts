@@ -7,31 +7,31 @@ export const layouts: {
   {
     id: "scrapbook",
     name: "Recortes",
-    description: "Cores suaves, fitas e um toque divertido.",
+    description: "Cartões com fita",
   },
   {
     id: "clean",
     name: "Essencial",
-    description: "Uma grade simples para suas imagens brilharem.",
+    description: "Fotos em fila",
   },
   {
     id: "polaroid",
     name: "Instantes",
-    description: "Fotos com bordas brancas e espaço para legendas.",
+    description: "Fotos com borda",
   },
   {
     id: "mosaic",
     name: "Mosaico",
-    description: "Imagens grandes e pequenas, lado a lado.",
+    description: "Fotos de vários tamanhos",
   },
   {
     id: "editorial",
     name: "Horizonte",
-    description: "Uma imagem em destaque abre seu mural.",
+    description: "Uma foto grande no alto",
   },
   {
     id: "free",
     name: "Livre",
-    description: "Sobreponha fotos, frases e figurinhas onde quiser.",
+    description: "Tudo onde você quiser",
   },
 ];
