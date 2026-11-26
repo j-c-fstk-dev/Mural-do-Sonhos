@@ -316,3 +316,129 @@ test("invalid image preserves gallery; removing a card preserves its original ph
     .click();
   await expect(page.locator('[data-slot="1"] .mural-card img')).toHaveCount(1);
 });
+
+test("mural livre saves drag, layer order and stickers independently of templates", async ({
+  page,
+}, info) => {
+  await openApp(page);
+  await uploadPhoto(page);
+  await page.getByRole("button", { name: "Livre", exact: true }).click();
+  const editor = page.getByRole("region", { name: "Editor livre" });
+  await editor.getByRole("button", { name: "Foto", exact: true }).click();
+  await page.getByRole("button", { name: "Adicionar foto: icon-512" }).click();
+  const photoItem = editor.getByRole("button", { name: "Foto: icon-512" });
+  await expect(photoItem).toBeVisible();
+
+  await editor.getByRole("button", { name: "Texto", exact: true }).click();
+  await page.getByLabel("Texto do mural").fill("Meu ateliê & jardim");
+  await page.getByRole("button", { name: "Colocar no mural" }).click();
+  const note = editor.getByRole("button", {
+    name: "Texto: Meu ateliê & jardim",
+  });
+
+  await editor.getByRole("button", { name: "Figurinhas", exact: true }).click();
+  for (const category of [
+    "Viagens",
+    "Natureza",
+    "Vida e conquistas",
+    "Recortes e fitas",
+    "Sonhos",
+  ]) {
+    await page.getByRole("button", { name: category, exact: true }).click();
+    await expect(page.locator(".free-sticker-picker button")).toHaveCount(10);
+  }
+  await page.getByRole("button", { name: "Estrela", exact: true }).click();
+  const star = editor.getByRole("button", { name: "Figurinha: Estrela" });
+  await expect(star).toBeVisible();
+  await star.evaluate((element) =>
+    element.scrollIntoView({ block: "center", behavior: "instant" }),
+  );
+  const before = await star.evaluate((element) => element.style.left);
+  const rect = (await star.boundingBox())!;
+  const x = Math.round(rect.x + rect.width / 2);
+  const y = Math.round(rect.y + rect.height / 2);
+  await expect
+    .poll(() =>
+      star.evaluate(
+        (element, point) =>
+          element.contains(document.elementFromPoint(point.x, point.y)),
+        { x, y },
+      ),
+    )
+    .toBe(true);
+  if (info.project.name === "mobile") {
+    const session = await page.context().newCDPSession(page);
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x, y }],
+    });
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: x - 40, y: y + 25 }],
+    });
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await session.detach();
+  } else {
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 40, y + 25, { steps: 6 });
+    await page.mouse.up();
+  }
+  await expect
+    .poll(() => star.evaluate((element) => element.style.left))
+    .not.toBe(before);
+
+  const layers = editor.getByRole("list", { name: "Da frente para trás" });
+  await layers.getByRole("button", { name: "icon-512" }).click();
+  await editor.getByRole("button", { name: "Trazer para frente" }).click();
+  await expect(layers.getByRole("listitem").nth(1)).toHaveText("icon-512");
+  await expect(editor.locator(".free-item").nth(1)).toHaveAttribute(
+    "aria-label",
+    "Foto: icon-512",
+  );
+
+  await layers.getByRole("button", { name: "Meu ateliê & jardim" }).click();
+  const prevWidth = await note.evaluate((element) => element.style.width);
+  await editor.getByRole("button", { name: "Aumentar" }).click();
+  await expect
+    .poll(() => note.evaluate((element) => element.style.width))
+    .not.toBe(prevWidth);
+  await editor.getByRole("button", { name: "Editar texto" }).click();
+  await page.getByLabel("Texto do mural").fill("Meu jardim & ateliê");
+  await page.getByRole("button", { name: "Salvar texto" }).click();
+
+  const savedLeft = await star.evaluate((element) => element.style.left);
+  await page.getByRole("button", { name: "Recortes", exact: true }).click();
+  await expect(page.locator(".mural-card img")).toHaveCount(1);
+  const freeLayout = page.getByRole("button", { name: "Livre", exact: true });
+  await freeLayout.click();
+  await expect(freeLayout).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(star).toBeVisible();
+  expect(await star.evaluate((element) => element.style.left)).toBe(savedLeft);
+  await expect(layers.getByRole("listitem").nth(1)).toHaveText("icon-512");
+  await expect(
+    editor.getByRole("button", { name: "Texto: Meu jardim & ateliê" }),
+  ).toBeVisible();
+
+  const download = page.waitForEvent("download");
+  await editor.getByRole("button", { name: "Baixar mural" }).click();
+  const file = await download;
+  const bytes = await fs.readFile((await file.path())!);
+  expect(bytes.subarray(1, 4).toString()).toBe("PNG");
+  expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+    2000, 1500,
+  ]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `work/mural-livre-${info.project.name}.png`,
+    fullPage: true,
+  });
+});

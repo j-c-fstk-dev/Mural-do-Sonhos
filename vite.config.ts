@@ -15,7 +15,7 @@ export default defineConfig({
         name: "Mural dos Sonhos",
         short_name: "Meus Sonhos",
         description:
-          "Monte seu mural de sonhos com fotos, frases e cinco layouts.",
+          "Monte seu mural de sonhos com fotos, frases, figurinhas, templates e um modo livre.",
         lang: "pt-BR",
         start_url: "/",
         scope: "/",
