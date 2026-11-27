@@ -809,3 +809,66 @@ test("auto assembly uses the layout, keeps its cards and exports a custom paper"
     payload.assets.some((asset: { id: string }) => asset.id === patternId),
   ).toBe(true);
 });
+
+test("installation settings offer device guides, a native prompt and a valid manifest", async ({
+  page,
+}) => {
+  await openApp(page);
+  await navigate(page, "/ajustes");
+  const section = page.getByRole("region", { name: "Instalar o app" });
+  await section.getByText("Android · Chrome", { exact: true }).click();
+  await expect(section.getByText(/Instalar e criar atalho/)).toBeVisible();
+  await section.getByText("iPhone e iPad · Safari", { exact: true }).click();
+  await expect(
+    section.getByText("Adicionar à Tela de Início", { exact: true }),
+  ).toBeVisible();
+  await section
+    .getByText("Computador · Chrome, Edge ou Safari", { exact: true })
+    .click();
+  await expect(section.getByText(/Adicionar ao Dock/)).toBeVisible();
+
+  await page.evaluate(() => {
+    const install = new Event("beforeinstallprompt", { cancelable: true });
+    Object.assign(install, {
+      prompt: async () => {
+        document.body.dataset.installPrompted = "true";
+      },
+      userChoice: Promise.resolve({ outcome: "dismissed" }),
+    });
+    window.dispatchEvent(install);
+  });
+  await section
+    .getByRole("button", { name: "Instalar neste aparelho" })
+    .click();
+  await expect(page.locator("body")).toHaveAttribute(
+    "data-install-prompted",
+    "true",
+  );
+  await expect(section.getByText(/Instalação cancelada/)).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+  await expect(
+    section.getByText(/está instalado neste aparelho/),
+  ).toBeVisible();
+
+  const manifest = await page.evaluate(async () => {
+    const manifestLink = document.querySelector<HTMLLinkElement>(
+      'link[rel="manifest"]',
+    )!;
+    const response = await fetch(manifestLink.href);
+    return response.json();
+  });
+  expect(manifest).toMatchObject({
+    id: "/",
+    start_url: "/",
+    display: "standalone",
+  });
+  expect(manifest.icons).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ sizes: "192x192" }),
+      expect.objectContaining({ sizes: "512x512", purpose: "maskable" }),
+    ]),
+  );
+  for (const icon of manifest.icons)
+    expect((await page.request.get(icon.src)).ok()).toBe(true);
+  expect((await page.request.get("/icons/icon-192.png")).ok()).toBe(true);
+});
