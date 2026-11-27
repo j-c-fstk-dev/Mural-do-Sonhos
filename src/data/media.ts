@@ -1,4 +1,4 @@
-import { drawPaper, fonts } from "./paper";
+import { drawPageBackground, fonts } from "./paper";
 import {
   makeId,
   now,
@@ -120,7 +120,9 @@ function base64(blob: Blob) {
   });
 }
 export async function exportBackup(data: Workspace, repository: Repository) {
-  const ids = new Set(data.gallery.map((photo) => photo.id));
+  const ids = new Set(
+    [...data.gallery, ...data.patterns].map((photo) => photo.id),
+  );
   const assets = await repository.assets();
   if ([...ids].some((id) => !assets.some((asset) => asset.id === id)))
     throw new Error(
@@ -174,7 +176,7 @@ const backupSchema = z.object({
           .regex(/^[A-Za-z0-9+/]*={0,2}$/),
       }),
     )
-    .max(40),
+    .max(80),
 });
 export async function readBackup(file: File) {
   if (file.size > 60 * 1024 * 1024)
@@ -209,7 +211,7 @@ export async function readBackup(file: File) {
     });
   }
   if (
-    workspace.gallery.some(
+    [...workspace.gallery, ...workspace.patterns].some(
       (photo) => !assets.some((asset) => asset.id === photo.id),
     )
   )
@@ -315,7 +317,13 @@ export async function exportMural(data: Workspace, repository: Repository) {
   canvas.width = 1080;
   canvas.height = Math.max(...slots.map((slot) => slot.y + slot.h)) + 65;
   const ctx = canvas.getContext("2d")!;
-  drawPaper(ctx, data.paper, canvas.width, canvas.height);
+  await drawPageBackground(
+    ctx,
+    data.paper,
+    canvas.width,
+    canvas.height,
+    repository,
+  );
   ctx.fillStyle = "#463c53";
   ctx.font = "bold 37px Georgia";
   ctx.fillText("Mural dos Sonhos", 40, 65);
@@ -339,8 +347,13 @@ export async function exportMural(data: Workspace, repository: Repository) {
       ctx.rotate((position % 2 ? 1 : -1) * 0.022);
       ctx.translate(-x - w / 2, -y - h / 2);
     }
+    const instant =
+      card.asset_id &&
+      (card.frame === "polaroid" || (template === "polaroid" && !card.frame));
     ctx.fillStyle =
-      template === "polaroid" || template === "clean"
+      instant ||
+      (template === "polaroid" && card.kind !== "image") ||
+      template === "clean"
         ? "#fffdf9"
         : palette[card.color];
     ctx.fillRect(x, y, w, h);
@@ -382,7 +395,7 @@ export async function exportMural(data: Workspace, repository: Repository) {
     ctx.fillStyle = "#463c53";
     ctx.font = "19px sans-serif";
     wrap(ctx, card.caption, x + 16, y + h - 50, w - 32, 25, 2);
-    if (template === "scrapbook") {
+    if (template === "scrapbook" && !instant) {
       ctx.fillStyle = "#dfcda9b0";
       ctx.translate(x + w / 2, y);
       ctx.rotate(-0.1);

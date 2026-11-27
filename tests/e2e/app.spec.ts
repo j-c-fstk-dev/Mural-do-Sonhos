@@ -637,3 +637,175 @@ test("tablet tools align with the sheet while both panels are open", async ({
   expect(toolsBox.x).toBeGreaterThanOrEqual(paperBox.x + paperBox.width);
   expect(toolsBox.height).toBeLessThanOrEqual(paperBox.height + 1);
 });
+
+test("auto assembly uses the layout, keeps its cards and exports a custom paper", async ({
+  page,
+}) => {
+  await openApp(page);
+  await chooseLayout(page, "Horizonte");
+  async function image(
+    name: string,
+    width: number,
+    height: number,
+    color: string,
+  ) {
+    const encoded = await page.evaluate(
+      ({ width, height, color }) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, width, height);
+        return canvas.toDataURL().split(",")[1];
+      },
+      { width, height, color },
+    );
+    return {
+      name,
+      mimeType: "image/png",
+      buffer: Buffer.from(encoded, "base64"),
+    };
+  }
+  const images = await Promise.all([
+    image("Retrato.png", 80, 180, "#a43172"),
+    image("Paisagem.png", 240, 80, "#d07832"),
+    image("Praia.png", 160, 120, "#5772a8"),
+  ]);
+  const pattern = await image("Estampa da marca.png", 80, 80, "#229952");
+
+  await page
+    .getByRole("button", { name: "Montar com fotos", exact: true })
+    .click();
+  await page.getByLabel("Carregar fotos para montar").setInputFiles(images);
+  await page.getByRole("checkbox", { name: "Praia", exact: true }).uncheck();
+  await page
+    .getByRole("dialog", { name: "Montar com fotos" })
+    .getByRole("combobox", { name: "Moldura da foto" })
+    .selectOption("polaroid");
+  await page
+    .getByRole("button", { name: "Montar página", exact: true })
+    .click();
+  await expect(page.locator('[data-slot="0"] img')).toHaveAttribute(
+    "alt",
+    "Paisagem",
+  );
+  await expect(page.locator('.mural-card[data-frame="polaroid"]')).toHaveCount(
+    2,
+  );
+
+  await page
+    .getByRole("button", { name: "Montar com fotos", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Escolher todas" }).click();
+  await page
+    .getByRole("button", { name: "Montar página", exact: true })
+    .click();
+  await expect(page.locator('[data-slot="0"] img')).toHaveAttribute(
+    "alt",
+    "Paisagem",
+  );
+  await expect(page.locator('[data-slot="2"] img')).toHaveAttribute(
+    "alt",
+    "Praia",
+  );
+
+  await page.getByRole("button", { name: "Nova página", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Editor livre" }),
+  ).toBeVisible();
+  const tools = page.getByRole("button", {
+    name: "Abrir ferramentas",
+    exact: true,
+  });
+  if (await tools.isVisible()) await tools.click();
+  await page.getByLabel("Colocar uma estampa").setInputFiles(pattern);
+  await expect(page.locator(".book-leaf")).toHaveAttribute(
+    "data-pattern",
+    "true",
+  );
+  await page
+    .getByRole("combobox", { name: "Fonte do título" })
+    .selectOption("collage");
+  await expect(page.locator(".book-page-title")).toHaveCSS(
+    "font-family",
+    /Barriecito/,
+  );
+
+  await page
+    .getByRole("button", { name: "Montar com fotos", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Escolher todas" }).click();
+  await page
+    .getByRole("dialog", { name: "Montar com fotos" })
+    .getByRole("combobox", { name: "Moldura da foto" })
+    .selectOption("polaroid");
+  await page
+    .getByRole("button", { name: "Montar página", exact: true })
+    .click();
+  const photos = page.locator('.free-item[data-frame="polaroid"]');
+  await expect(photos).toHaveCount(3);
+  const rectangles = await photos.evaluateAll((items) =>
+    items.map((item) => {
+      const r = item.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    }),
+  );
+  for (const [i, box] of rectangles.entries()) {
+    for (const next of rectangles.slice(i + 1))
+      expect(
+        box.left < next.right &&
+          box.right > next.left &&
+          box.top < next.bottom &&
+          box.bottom > next.top,
+      ).toBe(false);
+  }
+
+  await openSidebar(page);
+  await page.getByRole("button", { name: "Figurinhas", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Categoria" })
+    .selectOption({ label: "Mesa de scrapbook" });
+  await page
+    .getByRole("button", { name: "Etiqueta kraft", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Figurinha: Etiqueta kraft" }),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator(".book-leaf")).toHaveAttribute(
+    "data-pattern",
+    "true",
+  );
+  await expect(photos).toHaveCount(3);
+  const pendingPng = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Baixar mural", exact: true }).click();
+  const png = await pendingPng;
+  const bytes = await fs.readFile((await png.path())!);
+  const pixel = await page.evaluate(async (base64) => {
+    const img = await createImageBitmap(
+      new Blob([Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))], {
+        type: "image/png",
+      }),
+    );
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    return Array.from(ctx.getImageData(0, 0, 1, 1).data);
+  }, bytes.toString("base64"));
+  expect(pixel[1]).toBeGreaterThan(130);
+  expect(pixel[0]).toBeLessThan(55);
+  expect(pixel[3]).toBe(255);
+
+  await navigate(page, "/ajustes");
+  const pendingBackup = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Baixar cópia completa" }).click();
+  const backup = await pendingBackup;
+  const payload = JSON.parse(await fs.readFile((await backup.path())!, "utf8"));
+  const { id: patternId } = payload.workspace.patterns[0];
+  expect(payload.workspace.pages[0].paper.patternId).toBe(patternId);
+  expect(
+    payload.assets.some((asset: { id: string }) => asset.id === patternId),
+  ).toBe(true);
+});

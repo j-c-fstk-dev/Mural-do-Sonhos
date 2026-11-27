@@ -1,3 +1,4 @@
+import "@fontsource/barriecito/latin-400.css";
 import "@fontsource-variable/dm-sans";
 import "@fontsource-variable/playfair-display";
 import "@fontsource-variable/caveat";

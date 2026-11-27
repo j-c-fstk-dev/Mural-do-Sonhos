@@ -20,7 +20,9 @@ import {
   removeGalleryPhoto,
   sortedCards,
 } from "../data/media";
-import { now, rowBase, type Card } from "../data/model";
+import { now, rowBase, type Card, type PhotoFrame } from "../data/model";
+import { photoCard } from "../data/autoMural";
+import { PhotoFrameField } from "../components/PhotoFrameField";
 import { LocalImage } from "../components/LocalImage";
 import { FreeMural } from "./FreeMural";
 import { Feedback, Modal, Submit, type ScreenProps } from "../components/ui";
@@ -33,6 +35,7 @@ function CardEditor({
   const [body, setBody] = useState(card?.body || "");
   const [caption, setCaption] = useState(card?.caption || "");
   const [color, setColor] = useState<Card["color"]>(card?.color || "lavender");
+  const [frame, setFrame] = useState(card?.frame);
   const [goalId, setGoalId] = useState(card?.goal_id || "");
   const action = useAction();
   return (
@@ -53,6 +56,7 @@ function CardEditor({
                       body: body.trim(),
                       caption: caption.trim(),
                       color,
+                      frame,
                       goal_id: goalId || null,
                       updated_at: now(),
                     },
@@ -107,6 +111,9 @@ function CardEditor({
             onChange={(event) => setCaption(event.target.value)}
           />
         </label>
+        {card?.kind === "image" && (
+          <PhotoFrameField value={frame} onChange={setFrame} fromLayout />
+        )}
         <label>
           Cor do cartão
           <select
@@ -154,6 +161,7 @@ export function Mural({
   showInspector: () => void;
 }) {
   const [editor, setEditor] = useState<Card | "quote" | null>(null);
+  const [newFrame, setNewFrame] = useState<PhotoFrame>();
   const [selection, setSelection] = useState<Placement | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [pointerDrag, setPointerDrag] = useState(false);
@@ -202,23 +210,11 @@ export function Mural({
                   kind: "image",
                   asset_id: photo.id,
                   body: photo.label,
+                  frame: newFrame,
                   caption: "",
                   updated_at: now(),
                 });
-              else
-                data.cards.push({
-                  ...rowBase(),
-                  dream_id: data.dream.id,
-                  goal_id: null,
-                  kind: "image",
-                  asset_id: photo.id,
-                  body: photo.label,
-                  caption: "",
-                  color: ["lavender", "peach", "sage", "butter"][
-                    position % 4
-                  ] as Card["color"],
-                  position,
-                });
+              else data.cards.push(photoCard(data, photo, position, newFrame));
             }
           }),
         "Cartão na folha.",
@@ -331,6 +327,13 @@ export function Mural({
               <br />
               {store.data.gallery.length}/40 fotos · salvas neste aparelho
             </p>
+            {!!store.data.gallery.length && (
+              <PhotoFrameField
+                value={newFrame}
+                onChange={setNewFrame}
+                fromLayout
+              />
+            )}
             <div className="gallery-grid">
               {store.data.gallery.map((photo) => (
                 <div
@@ -469,6 +472,14 @@ export function Mural({
                 {card ? (
                   <article
                     className={`mural-card ${card.color}`}
+                    data-frame={
+                      card.kind === "image"
+                        ? (card.frame ??
+                          (store.data.profile.template === "polaroid"
+                            ? "polaroid"
+                            : "plain"))
+                        : undefined
+                    }
                     draggable
                     onDragStart={(event) => {
                       event.dataTransfer.setData(

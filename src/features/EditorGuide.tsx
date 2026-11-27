@@ -9,7 +9,7 @@ const steps = [
   {
     target: "photos",
     title: "Coloque uma foto",
-    body: "Abra Fotos, escolha uma do aparelho e toque nela para pôr na folha. Exemplo: uma foto da praia que você quer visitar.",
+    body: "Abra Fotos, escolha uma do aparelho e toque nela para pôr na folha. Para colocar várias fotos de uma vez, toque em Montar com fotos.",
   },
   {
     target: "text",
