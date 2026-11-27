@@ -1,3 +1,4 @@
+import type { EditContext } from "./EditorDock";
 import {
   useEffect,
   useRef,
@@ -258,7 +259,7 @@ function TextEditor({
 }) {
   return (
     <div className="book-text-controls">
-      <label>
+      <label data-dock-field="body">
         O que está escrito
         <textarea
           defaultValue={item.body}
@@ -272,7 +273,7 @@ function TextEditor({
           }}
         />
       </label>
-      <label>
+      <label data-dock-field="font">
         Letra do texto
         <select
           value={item.font}
@@ -288,7 +289,7 @@ function TextEditor({
         </select>
       </label>
       <div className="book-field-grid">
-        <label>
+        <label data-dock-field="size">
           Tamanho da letra
           <input
             type="number"
@@ -303,7 +304,7 @@ function TextEditor({
             }}
           />
         </label>
-        <label>
+        <label data-dock-field="color">
           Cor do texto{" "}
           <input
             type="color"
@@ -312,7 +313,7 @@ function TextEditor({
           />
         </label>
       </div>
-      <label>
+      <label data-dock-field="style">
         Fundo do texto
         <select
           value={item.backgroundMode}
@@ -327,7 +328,7 @@ function TextEditor({
         </select>
       </label>
       {item.backgroundMode === "filled" && (
-        <label>
+        <label data-dock-field="style">
           Cor do fundo do texto
           <input
             type="color"
@@ -338,7 +339,7 @@ function TextEditor({
           />
         </label>
       )}
-      <div className="book-compact-buttons">
+      <div className="book-compact-buttons" data-dock-field="style">
         <button
           className="text-button"
           type="button"
@@ -356,7 +357,7 @@ function TextEditor({
           <u>Sublinhado</u>
         </button>
       </div>
-      <label>
+      <label data-dock-field="style">
         Lista
         <select
           value={item.list}
@@ -369,7 +370,7 @@ function TextEditor({
           <option value="numbered">Numerada</option>
         </select>
       </label>
-      <label>
+      <label data-dock-field="style">
         Curvar o texto
         <input
           type="range"
@@ -391,11 +392,13 @@ export function FreeMural({
   inspector,
   closeMobileSidebar,
   showInspector,
+  onContext,
 }: ScreenProps & {
   sidebar: HTMLElement | null;
   inspector: HTMLElement | null;
   closeMobileSidebar: () => void;
   showInspector: () => void;
+  onContext?: (context: EditContext) => void;
 }) {
   const [selectedId, select] = useState<string | null>(null);
   const [library, setLibrary] = useState<"photos" | "text" | "stickers" | null>(
@@ -415,6 +418,7 @@ export function FreeMural({
   } | null>(null);
   const board = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
+  const draggedClick = useRef(false);
   const action = useAction();
   const items = store.data.free_items;
   const selectedIndex = items.findIndex((item) => item.id === selectedId);
@@ -509,6 +513,7 @@ export function FreeMural({
       .then((ok) => {
         if (ok) {
           select(id);
+          onContext?.(content.kind);
           closeMobileSidebar();
           if (content.kind === "text") showInspector();
         }
@@ -619,6 +624,7 @@ export function FreeMural({
   ) {
     if (event.button !== 0 || !event.isPrimary || action.pending) return;
     event.stopPropagation();
+    draggedClick.current = false;
     select(item.id);
     drag.current = {
       ...point(event),
@@ -640,7 +646,10 @@ export function FreeMural({
       Math.hypot(next.x - current.x, next.y - current.y) < 4
     )
       return;
+    if (!current.moved && current.handle === "move")
+      onContext?.(current.item.kind);
     current.moved = true;
+    draggedClick.current = true;
     setPreview(positionPreview(current, next, event.pointerType));
   }
 
@@ -852,7 +861,10 @@ export function FreeMural({
           data-texture={store.data.paper.texture}
           style={{ backgroundColor: store.data.paper.background }}
           onClick={(event) => {
-            if (event.target === event.currentTarget) select(null);
+            if (event.target === event.currentTarget) {
+              select(null);
+              onContext?.("paper");
+            }
           }}
         >
           {!items.length && (
@@ -882,7 +894,11 @@ export function FreeMural({
                   type="button"
                   aria-label={`${{ photo: "Foto", text: "Texto", shape: "Forma", sticker: "Figurinha" }[item.kind]}: ${label(item)}`}
                   aria-pressed={selectedId === item.id}
-                  onClick={() => select(item.id)}
+                  onClick={(event) => {
+                    if (draggedClick.current && event.detail !== 0) return;
+                    select(item.id);
+                    onContext?.(item.kind);
+                  }}
                   onDoubleClick={() =>
                     item.kind === "text"
                       ? setInlineId(item.id)
@@ -1042,7 +1058,7 @@ export function FreeMural({
         createPortal(
           <>
             {selected && (
-              <details className="book-tool" open>
+              <details className="book-tool" data-dock-group="selection" open>
                 <summary data-guide="format">
                   Editar o que você escolheu
                 </summary>
@@ -1059,13 +1075,15 @@ export function FreeMural({
                   />
                 )}
                 {selected.kind === "photo" && (
-                  <PhotoFrameField
-                    value={selected.frame}
-                    onChange={(frame) => update(selected, { frame })}
-                  />
+                  <div data-dock-field="frame">
+                    <PhotoFrameField
+                      value={selected.frame}
+                      onChange={(frame) => update(selected, { frame })}
+                    />
+                  </div>
                 )}
                 {selected.kind === "shape" && (
-                  <label>
+                  <label data-dock-field="color">
                     Cor da forma{" "}
                     <input
                       type="color"
@@ -1076,7 +1094,7 @@ export function FreeMural({
                     />
                   </label>
                 )}
-                <div className="book-field-grid">
+                <div className="book-field-grid" data-dock-field="dimensions">
                   <label>
                     Largura{" "}
                     <input
@@ -1136,7 +1154,11 @@ export function FreeMural({
                 </div>
               </details>
             )}
-            <details className="book-tool" open={items.length > 0}>
+            <details
+              className="book-tool"
+              data-dock-group="layers"
+              open={!!onContext || items.length > 0}
+            >
               <summary data-guide="layers">
                 <Layers size={17} /> Ordem na folha
               </summary>
@@ -1144,6 +1166,7 @@ export function FreeMural({
                 <div className="book-compact-buttons">
                   <button
                     className="text-button"
+                    data-dock-field="layers"
                     aria-label="Trazer para frente"
                     disabled={
                       action.pending || selectedIndex === items.length - 1
@@ -1154,6 +1177,7 @@ export function FreeMural({
                   </button>
                   <button
                     className="text-button"
+                    data-dock-field="layers"
                     aria-label="Enviar para trás"
                     disabled={action.pending || selectedIndex === 0}
                     onClick={() => reorder(-1)}
@@ -1162,30 +1186,45 @@ export function FreeMural({
                   </button>
                   <button
                     className="icon-button"
+                    data-dock-field="remove"
                     aria-label="Remover do mural"
                     disabled={action.pending}
                     onClick={() =>
-                      void action.run(() =>
-                        store.mutate((data) => {
-                          data.free_items = data.free_items.filter(
-                            (entry) => entry.id !== selected.id,
-                          );
-                        }),
-                      )
+                      void action
+                        .run(() =>
+                          store.mutate((data) => {
+                            data.free_items = data.free_items.filter(
+                              (entry) => entry.id !== selected.id,
+                            );
+                          }),
+                        )
+                        .then((ok) => {
+                          if (ok) {
+                            select(null);
+                            onContext?.("paper");
+                          }
+                        })
                     }
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               )}
-              <ol className="free-layer-list" aria-label="Da frente para trás">
+              <ol
+                className="free-layer-list"
+                data-dock-field="layers"
+                aria-label="Da frente para trás"
+              >
                 {items.toReversed().map((item) => (
                   <li key={item.id}>
                     <button
                       type="button"
                       title={label(item)}
                       aria-pressed={item.id === selectedId}
-                      onClick={() => select(item.id)}
+                      onClick={() => {
+                        select(item.id);
+                        onContext?.(item.kind);
+                      }}
                       onKeyDown={(event) => keyMove(event, item)}
                     >
                       <span>{label(item)}</span>
@@ -1194,7 +1233,7 @@ export function FreeMural({
                 ))}
               </ol>
             </details>
-            <details className="book-tool" open>
+            <details className="book-tool" data-dock-group="shapes" open>
               <summary data-guide="shapes">
                 <Shapes size={17} /> Formas
               </summary>

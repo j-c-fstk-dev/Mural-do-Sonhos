@@ -638,3 +638,208 @@
   border-radius: 3px;
   object-fit: cover;
 }
+
+.book-sidebar-edge,
+.book-sidebar-back {
+  display: none;
+}
+
+.book-shell[data-compact-mural="true"] {
+  --mural-library-width: min(266px, calc(100vw - 56px));
+  --mural-library-edge: 0px;
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: 34px;
+}
+.book-shell[data-compact-mural="true"][data-menu="true"] {
+  --mural-library-edge: var(--mural-library-width);
+}
+.book-shell[data-compact-mural="true"] .book-sidebar {
+  display: block;
+  position: fixed;
+  top: 57px;
+  left: 0;
+  z-index: 11;
+  width: var(--mural-library-width);
+  height: calc(100dvh - 57px);
+  max-height: none;
+  overflow-y: auto;
+  border-right: 1px solid #e4dcd8;
+  border-bottom: 0;
+}
+.book-shell[data-compact-mural="true"] .book-sidebar[hidden],
+.book-shell[data-compact-mural="true"][data-menu-level="library"]
+  :is(.book-nav-group, .book-tour-link),
+.book-shell[data-compact-mural="true"][data-menu-level="navigation"]
+  .book-library {
+  display: none;
+}
+.book-shell[data-compact-mural="true"] .book-nav-group > summary {
+  display: none;
+}
+.book-shell[data-compact-mural="true"] nav {
+  grid-template-columns: minmax(0, 1fr);
+}
+.book-shell[data-compact-mural="true"][data-menu-level="library"]
+  .book-sidebar-back {
+  display: flex;
+  min-height: 44px;
+  justify-content: flex-start;
+  margin-bottom: 7px;
+}
+.book-shell[data-compact-mural="true"] .book-sidebar-edge {
+  position: fixed;
+  top: 65px;
+  left: var(--mural-library-edge);
+  z-index: 13;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  min-height: 48px;
+  padding: 0;
+  border: 1px solid #dfd5e1;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  background: #fffaf6;
+}
+.book-shell[data-compact-mural="true"] .book-backdrop {
+  position: fixed;
+  inset: 57px 0 0 var(--mural-library-edge);
+  display: block;
+  z-index: 10;
+  width: auto;
+  border: 0;
+  border-radius: 0;
+  background: #32233d35;
+}
+.book-shell[data-compact-mural="true"]
+  .book-main-editor:has(.book-mobile-dock:not([hidden])) {
+  padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+}
+.book-shell[data-compact-mural="true"] .book-stage {
+  padding-inline: 8px;
+}
+@media (min-width: 720px) {
+  .book-shell[data-compact-mural="true"][data-menu="true"] {
+    padding-left: calc(var(--mural-library-width) + 34px);
+  }
+  .book-shell[data-compact-mural="true"][data-menu="true"] .book-backdrop {
+    display: none;
+  }
+  .book-shell[data-compact-mural="true"][data-menu="true"] .book-mobile-dock {
+    left: calc(var(--mural-library-width) + 34px);
+  }
+}
+.book-mobile-dock {
+  position: fixed;
+  z-index: 9;
+  inset: auto 0 var(--dock-bottom, 0px) 0;
+  background: #fffaf6;
+  border-top: 1px solid #ded2db;
+  box-shadow: 0 -5px 24px #26152d19;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.book-mobile-controls {
+  overflow: auto;
+  overscroll-behavior: contain;
+  max-height: min(43dvh, calc(var(--dock-viewport, 100dvh) - 112px));
+  padding: 2px 12px 8px;
+}
+.book-mobile-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: #fffaf6;
+  z-index: 1;
+}
+.book-mobile-heading h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.book-mobile-heading button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.book-mobile-actions {
+  display: flex;
+  overflow: auto hidden;
+  gap: 3px;
+  padding: 4px 8px;
+  border-top: 1px solid #ede2eb;
+}
+.book-mobile-actions button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+.book-mobile-actions button[aria-expanded="true"] {
+  background: #ede4f1;
+}
+.book-mobile-dock .book-tool > summary,
+.book-mobile-dock [data-dock-group],
+.book-mobile-dock [data-dock-field] {
+  display: none;
+}
+.book-mobile-dock[data-active-tool="paper"]
+  :is([data-dock-group="paper"], [data-dock-field="paper"]),
+.book-mobile-dock[data-active-tool="title"]
+  :is([data-dock-group="paper"], [data-dock-field="title"]),
+.book-mobile-dock[data-active-tool="shapes"] [data-dock-group="shapes"],
+.book-mobile-dock[data-active-tool="layers"]
+  :is(
+    [data-dock-group="layers"],
+    [data-dock-group="card"],
+    [data-dock-field="layers"]
+  ),
+.book-mobile-dock[data-active-tool="remove"]
+  :is(
+    [data-dock-group="layers"],
+    [data-dock-group="card"],
+    [data-dock-field="remove"]
+  ),
+.book-mobile-dock[data-active-tool="frame"]
+  :is(
+    [data-dock-group="selection"],
+    [data-dock-group="card"],
+    [data-dock-field="frame"]
+  ),
+.book-mobile-dock[data-active-tool="card"]
+  :is([data-dock-group="card"], [data-dock-field="card"]),
+.book-mobile-dock:is(
+    [data-active-tool="body"],
+    [data-active-tool="font"],
+    [data-active-tool="size"],
+    [data-active-tool="color"],
+    [data-active-tool="style"],
+    [data-active-tool="dimensions"]
+  )
+  [data-dock-group="selection"],
+.book-mobile-dock[data-active-tool="body"] [data-dock-field="body"],
+.book-mobile-dock[data-active-tool="font"] [data-dock-field="font"],
+.book-mobile-dock[data-active-tool="size"] [data-dock-field="size"],
+.book-mobile-dock[data-active-tool="color"] [data-dock-field="color"],
+.book-mobile-dock[data-active-tool="style"] [data-dock-field="style"],
+.book-mobile-dock[data-active-tool="dimensions"]
+  [data-dock-field="dimensions"] {
+  display: block;
+}
+.book-mobile-controls :is(input:not([type="color"]), select, textarea) {
+  font-size: 16px;
+}
+.book-shell:has(.book-inline-text) .book-mobile-dock {
+  visibility: hidden;
+}
+.book-shell[data-compact-mural="true"] .mural-card[data-active-card="true"] {
+  outline: 2px solid #8750b3;
+}
+.book-shell[data-compact-mural="true"]
+  .mural-card
+  .card-tools
+  button:not(.drag-handle) {
+  display: none;
+}
+.book-shell[data-compact-mural="true"] .editor-guide {
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+}

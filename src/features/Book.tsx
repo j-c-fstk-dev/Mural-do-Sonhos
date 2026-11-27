@@ -1,3 +1,4 @@
+import { EditorDock, type EditContext, type EditTool } from "./EditorDock";
 import { brandPapers, brandPaperUrl } from "../data/brandAssets";
 import {
   useCallback,
@@ -30,12 +31,14 @@ import { EditorGuide } from "./EditorGuide";
 
 export function Book({
   store,
+  compact,
   sidebar,
   closeMobileSidebar,
   tourSeen,
   openMenu,
   rememberMenu,
 }: ScreenProps & {
+  compact: boolean;
   sidebar: HTMLElement | null;
   closeMobileSidebar: () => void;
   tourSeen: boolean;
@@ -49,6 +52,11 @@ export function Book({
     () => !store.data.profile.editor_guide_seen || window.innerWidth > 900,
   );
   const [replayGuide, setReplayGuide] = useState(false);
+  const [dock, setDock] = useState<{
+    page: string;
+    context: EditContext;
+    tool: EditTool | null;
+  } | null>(null);
   const openTools = useCallback(() => setShowTools(true), []);
   const stage = useRef<HTMLDivElement>(null);
   const editor = useRef<HTMLDivElement>(null);
@@ -80,6 +88,24 @@ export function Book({
     store.data.profile.template === "scrapbook";
 
   const template = scoped.data.profile.template;
+  const dockPage = `${pageId ?? "first"}:${template}`;
+  const activeDock = dock?.page === dockPage ? dock : null;
+  function setContext(context: EditContext) {
+    setDock(
+      context === "paper" && activeDock?.tool
+        ? null
+        : { page: dockPage, context, tool: null },
+    );
+  }
+
+  const guideTools = useCallback(
+    (target?: string) => {
+      if (!compact) openTools();
+      else if (target === "paper" || target === "shapes" || target === "layers")
+        setDock({ page: dockPage, context: "paper", tool: null });
+    },
+    [compact, dockPage, openTools],
+  );
   const guiding =
     tourSeen &&
     !chooseLayout &&
@@ -113,7 +139,10 @@ export function Book({
   }, [pageId, template]);
 
   function finishGuide() {
-    rememberMenu();
+    if (compact) {
+      setDock(null);
+      closeMobileSidebar();
+    } else rememberMenu();
     setReplayGuide(false);
     if (!store.data.profile.editor_guide_seen)
       void action.run(() =>
@@ -226,6 +255,189 @@ export function Book({
       scoped.mutate((data) => Object.assign(data.paper, patch)),
     );
   }
+
+  const toolContents = (
+    <>
+      <div ref={setInspector} />
+      <details className="book-tool" data-dock-group="paper" open>
+        <summary data-guide="paper">Título e papel</summary>
+        <div data-dock-field="title">
+          <label>
+            Título da página
+            <input
+              key={pageId ?? "first"}
+              defaultValue={
+                paper.title || (!pageId ? store.data.dream.description : "")
+              }
+              maxLength={4000}
+              onBlur={(event) => {
+                const value = event.currentTarget.value.trim();
+                if (value !== paper.title) updatePaper({ title: value });
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+              }}
+            />
+          </label>
+          <label>
+            Fonte do título
+            <select
+              value={paper.titleFont}
+              onChange={(event) =>
+                updatePaper({
+                  titleFont: event.target.value as Paper["titleFont"],
+                })
+              }
+            >
+              {Object.entries(fonts).map(([key, choice]) => (
+                <option key={key} value={key}>
+                  {choice.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="book-colors">
+            <label>
+              Cor do título{" "}
+              <input
+                type="color"
+                value={paper.titleColor}
+                onChange={(event) =>
+                  updatePaper({ titleColor: event.target.value })
+                }
+              />
+            </label>
+          </div>
+        </div>
+        <div data-dock-field="paper">
+          <label>
+            Cor do fundo{" "}
+            <input
+              type="color"
+              value={paper.background}
+              onChange={(event) =>
+                updatePaper({
+                  background: event.target.value,
+                  patternId: null,
+                  brandPaper: null,
+                })
+              }
+            />
+          </label>
+          <label>
+            Desenho do papel
+            <select
+              value={paper.texture}
+              onChange={(event) =>
+                updatePaper({
+                  texture: event.target.value as Paper["texture"],
+                  patternId: null,
+                  brandPaper: null,
+                })
+              }
+            >
+              {Object.entries(textures).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="book-presets" aria-label="Ideias de papel">
+            {paperPresets.map(({ label, ...preset }) => (
+              <button
+                key={label}
+                type="button"
+                title={label}
+                aria-label={label}
+                data-texture={preset.texture}
+                aria-pressed={
+                  !paper.patternId &&
+                  !paper.brandPaper &&
+                  preset.background === paper.background &&
+                  preset.texture === paper.texture
+                }
+                style={{ backgroundColor: preset.background }}
+                onClick={() =>
+                  updatePaper({
+                    ...preset,
+                    patternId: null,
+                    brandPaper: null,
+                  })
+                }
+              />
+            ))}
+          </div>
+          <details className="brand-papers" open>
+            <summary>Fundos da marca</summary>
+            <div className="brand-paper-grid" aria-label="Fundos da marca">
+              {brandPapers.map(({ id, label }) => (
+                <button
+                  type="button"
+                  key={id}
+                  aria-pressed={!paper.patternId && paper.brandPaper === id}
+                  title={label}
+                  onClick={() =>
+                    updatePaper({ brandPaper: id, patternId: null })
+                  }
+                >
+                  <img src={brandPaperUrl(id)} alt="" loading="lazy" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          </details>
+          <label>
+            Colocar uma estampa
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={action.pending || store.data.patterns.length >= 40}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (file) importPattern(file);
+              }}
+            />
+          </label>
+          {store.data.patterns.length > 0 && (
+            <>
+              <label>
+                Estampas guardadas
+                <select
+                  value={paper.patternId ?? ""}
+                  disabled={action.pending}
+                  onChange={(event) =>
+                    updatePaper({
+                      patternId: event.target.value || null,
+                      brandPaper: null,
+                    })
+                  }
+                >
+                  <option value="">Sem estampa</option>
+                  {store.data.patterns.map((pattern) => (
+                    <option key={pattern.id} value={pattern.id}>
+                      {pattern.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {paper.patternId && (
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={action.pending}
+                  onClick={() => deletePattern(paper.patternId!)}
+                >
+                  Apagar esta estampa
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </details>
+    </>
+  );
 
   return (
     <>
@@ -354,15 +566,17 @@ export function Book({
         >
           Ajuda do mural
         </button>
-        <button
-          className="text-button"
-          aria-controls="book-inspector"
-          aria-expanded={showTools}
-          onClick={() => setShowTools(!showTools)}
-        >
-          <PanelRight size={19} />{" "}
-          {showTools ? "Fechar ferramentas" : "Abrir ferramentas"}
-        </button>
+        {!compact && (
+          <button
+            className="text-button"
+            aria-controls="book-inspector"
+            aria-expanded={showTools}
+            onClick={() => setShowTools(!showTools)}
+          >
+            <PanelRight size={19} />{" "}
+            {showTools ? "Fechar ferramentas" : "Abrir ferramentas"}
+          </button>
+        )}
       </div>
       <Feedback action={action} />
       {assembled && (
@@ -428,198 +642,42 @@ export function Book({
               inspector={inspector}
               closeMobileSidebar={closeMobileSidebar}
               showInspector={openTools}
+              onContext={compact ? setContext : undefined}
+              openLibrary={openMenu}
             />
           </section>
         </div>
-        <aside
-          id="book-inspector"
-          className="book-inspector"
-          hidden={!showTools}
-          aria-label="Painel de edição"
-        >
-          <h2 className="book-tools-heading">Ferramentas</h2>
-          <div ref={setInspector} />
-          <details className="book-tool" open>
-            <summary data-guide="paper">Título e papel</summary>
-            <label>
-              Título da página
-              <input
-                key={pageId ?? "first"}
-                defaultValue={
-                  paper.title || (!pageId ? store.data.dream.description : "")
-                }
-                maxLength={4000}
-                onBlur={(event) => {
-                  const value = event.currentTarget.value.trim();
-                  if (value !== paper.title) updatePaper({ title: value });
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") event.currentTarget.blur();
-                }}
-              />
-            </label>
-            <label>
-              Fonte do título
-              <select
-                value={paper.titleFont}
-                onChange={(event) =>
-                  updatePaper({
-                    titleFont: event.target.value as Paper["titleFont"],
-                  })
-                }
-              >
-                {Object.entries(fonts).map(([key, choice]) => (
-                  <option key={key} value={key}>
-                    {choice.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="book-colors">
-              <label>
-                Cor do título{" "}
-                <input
-                  type="color"
-                  value={paper.titleColor}
-                  onChange={(event) =>
-                    updatePaper({ titleColor: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Cor do fundo{" "}
-                <input
-                  type="color"
-                  value={paper.background}
-                  onChange={(event) =>
-                    updatePaper({
-                      background: event.target.value,
-                      patternId: null,
-                      brandPaper: null,
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <label>
-              Desenho do papel
-              <select
-                value={paper.texture}
-                onChange={(event) =>
-                  updatePaper({
-                    texture: event.target.value as Paper["texture"],
-                    patternId: null,
-                    brandPaper: null,
-                  })
-                }
-              >
-                {Object.entries(textures).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="book-presets" aria-label="Ideias de papel">
-              {paperPresets.map(({ label, ...preset }) => (
-                <button
-                  key={label}
-                  type="button"
-                  title={label}
-                  aria-label={label}
-                  data-texture={preset.texture}
-                  aria-pressed={
-                    !paper.patternId &&
-                    !paper.brandPaper &&
-                    preset.background === paper.background &&
-                    preset.texture === paper.texture
-                  }
-                  style={{ backgroundColor: preset.background }}
-                  onClick={() =>
-                    updatePaper({
-                      ...preset,
-                      patternId: null,
-                      brandPaper: null,
-                    })
-                  }
-                />
-              ))}
-            </div>
-            <details className="brand-papers" open>
-              <summary>Fundos da marca</summary>
-              <div className="brand-paper-grid" aria-label="Fundos da marca">
-                {brandPapers.map(({ id, label }) => (
-                  <button
-                    type="button"
-                    key={id}
-                    aria-pressed={!paper.patternId && paper.brandPaper === id}
-                    title={label}
-                    onClick={() =>
-                      updatePaper({ brandPaper: id, patternId: null })
-                    }
-                  >
-                    <img src={brandPaperUrl(id)} alt="" loading="lazy" />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-            </details>
-            <label>
-              Colocar uma estampa
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                disabled={action.pending || store.data.patterns.length >= 40}
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  event.currentTarget.value = "";
-                  if (file) importPattern(file);
-                }}
-              />
-            </label>
-            {store.data.patterns.length > 0 && (
-              <>
-                <label>
-                  Estampas guardadas
-                  <select
-                    value={paper.patternId ?? ""}
-                    disabled={action.pending}
-                    onChange={(event) =>
-                      updatePaper({
-                        patternId: event.target.value || null,
-                        brandPaper: null,
-                      })
-                    }
-                  >
-                    <option value="">Sem estampa</option>
-                    {store.data.patterns.map((pattern) => (
-                      <option key={pattern.id} value={pattern.id}>
-                        {pattern.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {paper.patternId && (
-                  <button
-                    className="text-button"
-                    type="button"
-                    disabled={action.pending}
-                    onClick={() => deletePattern(paper.patternId!)}
-                  >
-                    Apagar esta estampa
-                  </button>
-                )}
-              </>
-            )}
-          </details>
-        </aside>
+        {compact ? (
+          <EditorDock
+            context={activeDock?.context ?? null}
+            tool={activeDock?.tool ?? null}
+            free={template === "free"}
+            onTool={(tool) => {
+              if (activeDock) setDock({ ...activeDock, tool });
+            }}
+          >
+            {toolContents}
+          </EditorDock>
+        ) : (
+          <aside
+            id="book-inspector"
+            className="book-inspector"
+            hidden={!showTools}
+            aria-label="Painel de edição"
+          >
+            <h2 className="book-tools-heading">Ferramentas</h2>
+            {toolContents}
+          </aside>
+        )}
       </div>
       {guiding && (
         <EditorGuide
           free={template === "free"}
           onFinish={finishGuide}
           openMenu={openMenu}
-          openTools={openTools}
+          openTools={guideTools}
+          compact={compact}
+          closeMenu={closeMobileSidebar}
         />
       )}
     </>

@@ -11,6 +11,13 @@ test("brand paper and transparent stickers ship with the app", async ({
   await page.getByRole("button", { name: "Pular ajuda" }).click();
   const sheet = page.locator(".free-paper");
   await expect(sheet).toHaveCSS("background-image", /flores-creme\.webp/);
+  const compact =
+    (await page.locator(".book-shell").getAttribute("data-compact-mural")) ===
+    "true";
+  if (compact) {
+    await sheet.click({ position: { x: 5, y: 5 } });
+    await page.getByRole("button", { name: "Fundo", exact: true }).click();
+  }
   const papers = page.locator(".brand-paper-grid");
   await expect(papers.getByRole("button")).toHaveCount(20);
   await papers
@@ -18,13 +25,20 @@ test("brand paper and transparent stickers ship with the app", async ({
     .click();
   await expect(sheet).toHaveCSS("background-image", /poa-lilas\.webp/);
 
+  if (compact) {
+    await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
+    const mural = page.getByRole("link", { name: "Meu mural", exact: true });
+    if (await mural.isVisible()) await mural.click();
+  }
   await page.getByRole("button", { name: "Figurinhas", exact: true }).click();
   await page
     .getByRole("combobox", { name: "Categoria" })
     .selectOption({ label: "Coleção da marca" });
   const choices = page.locator(".free-sticker-picker button");
   await expect(choices).toHaveCount(42);
-  await choices.filter({ hasText: "Fita xadrez rosa" }).click();
+  const tape = choices.filter({ hasText: "Fita xadrez rosa" });
+  await tape.evaluate((button) => button.scrollIntoView({ block: "center" }));
+  await tape.click({ timeout: 8000 });
   const sticker = page.getByRole("button", {
     name: "Figurinha: Fita xadrez rosa",
     exact: true,

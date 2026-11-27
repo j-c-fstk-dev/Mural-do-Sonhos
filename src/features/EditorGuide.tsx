@@ -58,11 +58,15 @@ export function EditorGuide({
   onFinish,
   openMenu,
   openTools,
+  compact,
+  closeMenu,
 }: {
   free: boolean;
   onFinish: () => void;
   openMenu: () => void;
-  openTools: () => void;
+  openTools: (target?: string) => void;
+  compact: boolean;
+  closeMenu: () => void;
 }) {
   const available = free
     ? steps
@@ -77,23 +81,38 @@ export function EditorGuide({
   useEffect(() => {
     if (["layout", "photos", "text", "stickers"].includes(step.target))
       openMenu();
+    else if (compact) closeMenu();
     if (["shapes", "layers", "paper", "format"].includes(step.target))
-      openTools();
+      openTools(step.target);
     let highlighted: HTMLElement | null = null;
-    const frame = requestAnimationFrame(() => {
+    let frame = 0;
+    let attempts = 0;
+    function highlight() {
+      const matches = [
+        ...document.querySelectorAll<HTMLElement>(
+          `[data-guide="${step.target}"]`,
+        ),
+      ];
       highlighted =
-        document.querySelector<HTMLElement>(`[data-guide="${step.target}"]`) ??
+        matches.find((element) => element.getClientRects().length > 0) ??
         (step.target === "format"
-          ? document.getElementById("book-inspector")
+          ? document.querySelector<HTMLElement>(
+              compact ? '[data-guide="sheet"]' : "#book-inspector",
+            )
           : null);
+      if (!highlighted && attempts++ < 12) {
+        frame = requestAnimationFrame(highlight);
+        return;
+      }
       highlighted?.setAttribute("data-guide-active", "true");
       highlighted?.scrollIntoView({ block: "center", inline: "nearest" });
-    });
+    }
+    frame = requestAnimationFrame(highlight);
     return () => {
       cancelAnimationFrame(frame);
       highlighted?.removeAttribute("data-guide-active");
     };
-  }, [step, openMenu, openTools]);
+  }, [step, openMenu, openTools, compact, closeMenu]);
 
   return (
     <section
@@ -111,7 +130,11 @@ export function EditorGuide({
         <p>
           {!free && step.target === "sheet"
             ? "Toque em uma foto e depois no lugar onde ela deve ficar."
-            : step.body}
+            : compact && step.target === "format"
+              ? "Toque em um texto. Na barra de baixo, escolha Editar texto, Letra, Tamanho ou Cor."
+              : compact && step.target === "paper"
+                ? "Toque na folha e escolha Fundo ou Título na barra de baixo."
+                : step.body}
         </p>
       </div>
       <div className="editor-guide-actions">

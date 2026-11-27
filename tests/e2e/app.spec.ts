@@ -18,9 +18,29 @@ async function openApp(page: Page) {
   ).toHaveCount(0);
 }
 
+async function compactMural(page: Page) {
+  return (
+    (await page.locator(".book-shell").getAttribute("data-compact-mural")) ===
+    "true"
+  );
+}
+async function dockTool(page: Page, name: string) {
+  if (!(await compactMural(page))) return;
+  const tool = page
+    .getByRole("group", { name: "Opções da seleção" })
+    .getByRole("button", { name, exact: true });
+  await expect(tool).toBeVisible();
+  if ((await tool.getAttribute("aria-expanded")) !== "true") await tool.click();
+}
+async function tapPaper(page: Page) {
+  await page.locator(".free-paper").click({ position: { x: 5, y: 5 } });
+}
 async function openSidebar(page: Page) {
   const button = page.getByRole("button", { name: "Abrir menu", exact: true });
   if (await button.isVisible()) await button.click();
+  const mural = page.getByRole("link", { name: "Meu mural", exact: true });
+  if ((await compactMural(page)) && (await mural.isVisible()))
+    await mural.click();
 }
 
 async function chooseLayout(page: Page, name: string) {
@@ -62,18 +82,30 @@ test("quick mural: upload, touch placement, five layouts, edit, export and reope
     await chooseLayout(page, name);
     await expect(page.locator(".mural-card img")).toHaveCount(1);
   }
-  await page
-    .getByRole("button", { name: "Editar cartão 1", exact: true })
-    .click();
+  if (await compactMural(page)) {
+    await page.locator('[data-slot="0"] img').click();
+    await dockTool(page, "Editar cartão");
+    await page.getByRole("button", { name: "Abrir editor do cartão" }).click();
+  } else
+    await page
+      .getByRole("button", { name: "Editar cartão 1", exact: true })
+      .click();
   await page.getByLabel("O que aparece na foto?").fill("Meu estúdio criativo");
   await page.getByLabel("Legenda").fill("Um lugar para criar");
   await page.getByRole("button", { name: "Salvar cartão" }).click();
   await expect(
     page.getByText("Um lugar para criar", { exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Mover recorte 1 para frente" })
-    .click();
+  if (await compactMural(page)) {
+    await dockTool(page, "Ordem na folha");
+    await page
+      .getByRole("button", { name: "Mover para frente", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Recolher opções" }).click();
+  } else
+    await page
+      .getByRole("button", { name: "Mover recorte 1 para frente" })
+      .click();
   await expect(page.locator('[data-slot="1"] .mural-card')).toBeVisible();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Baixar mural", exact: true }).click();
@@ -309,9 +341,14 @@ test("invalid image preserves gallery; removing a card preserves its original ph
     await page
       .getByRole("button", { name: "Fechar menu", exact: true })
       .click();
-  await page
-    .getByRole("button", { name: "Retirar recorte 1 do mural", exact: true })
-    .click();
+  if (await compactMural(page)) {
+    await page.locator('[data-slot="0"] img').click();
+    await dockTool(page, "Remover");
+    await page.getByRole("button", { name: "Tirar cartão da folha" }).click();
+  } else
+    await page
+      .getByRole("button", { name: "Retirar recorte 1 do mural", exact: true })
+      .click();
   await expect(page.locator(".mural-card")).toHaveCount(0);
   await openSidebar(page);
   await expect(
@@ -382,9 +419,10 @@ test("tour, book pages, transforms, typography and PNG persist", async ({
   await expect(
     page.getByRole("complementary", { name: "Menu e biblioteca" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("complementary", { name: "Painel de edição" }),
-  ).toBeVisible();
+  if (!(await compactMural(page)))
+    await expect(
+      page.getByRole("complementary", { name: "Painel de edição" }),
+    ).toBeVisible();
   const guide = page.getByRole("region", { name: "Ajuda do mural" });
   for (const target of [
     "layout",
@@ -401,7 +439,7 @@ test("tour, book pages, transforms, typography and PNG persist", async ({
     await expect(
       page
         .locator(
-          `[data-guide="${target}"]${target === "format" ? ", #book-inspector" : ""}`,
+          `[data-guide="${target}"]${target === "format" ? ", #book-inspector, .free-paper" : ""}`,
         )
         .and(page.locator('[data-guide-active="true"]')),
     ).toBeVisible();
@@ -487,16 +525,53 @@ test("tour, book pages, transforms, typography and PNG persist", async ({
   await expect(
     page.getByRole("button", { name: "Texto: Um sonho de praia" }),
   ).toBeVisible();
+  if (await compactMural(page)) {
+    await photoItem.click();
+    await dockTool(page, "Moldura");
+    await expect(
+      page
+        .locator("#book-inspector")
+        .getByRole("combobox", { name: "Moldura da foto" }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Texto: Um sonho de praia", exact: true })
+      .click();
+    await expect(page.locator("#book-inspector")).toBeHidden();
+  }
+  await dockTool(page, "Editar texto");
   const note = page.getByRole("textbox", {
     name: "O que está escrito",
     exact: true,
   });
   await expect(note).toHaveValue("Um sonho de praia");
+  if (await compactMural(page)) {
+    await note.focus();
+    await page.evaluate(() => {
+      const viewport = window.visualViewport!;
+      Object.defineProperty(viewport, "height", {
+        configurable: true,
+        value: window.innerHeight - 230,
+      });
+      viewport.dispatchEvent(new Event("resize"));
+    });
+    await expect(page.locator(".book-mobile-dock")).toHaveCSS(
+      "bottom",
+      "230px",
+    );
+    await expect(note).toBeFocused();
+    await page.evaluate(() => {
+      const viewport = window.visualViewport!;
+      Reflect.deleteProperty(viewport, "height");
+      viewport.dispatchEvent(new Event("resize"));
+    });
+  }
   await note.fill("Meu ateliê\nUm jardim para criar");
   await note.blur();
+  await dockTool(page, "Letra");
   await page
     .getByRole("combobox", { name: "Letra do texto", exact: true })
     .selectOption("handwritten");
+  await dockTool(page, "Estilo");
   await page.getByRole("button", { name: "Negrito", exact: true }).click();
   await page.getByRole("button", { name: "Sublinhado", exact: true }).click();
   await page
@@ -523,18 +598,28 @@ test("tour, book pages, transforms, typography and PNG persist", async ({
     )
     .toEqual([241, 170, 188, 255]);
 
+  await dockTool(page, "Ordem na folha");
   const layers = page.getByRole("list", { name: "Da frente para trás" });
   await layers.getByRole("button", { name: "icon-512" }).click();
+  await dockTool(page, "Ordem na folha");
   await page.getByRole("button", { name: "Trazer para frente" }).click();
   await expect(layers.getByRole("listitem").nth(1)).toHaveText("icon-512");
 
+  if (await compactMural(page)) {
+    await page.getByRole("button", { name: "Recolher opções" }).click();
+    await tapPaper(page);
+    await dockTool(page, "Formas");
+  }
   await page.getByRole("button", { name: "Hexágono", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Forma: Hexágono" }),
   ).toBeVisible();
+  if (await compactMural(page)) await tapPaper(page);
+  await dockTool(page, "Título");
   await page.getByLabel("Título da página").fill("Minha primeira folha");
   await page.getByLabel("Título da página").blur();
   await page.getByLabel("Fonte do título").selectOption("mono");
+  await dockTool(page, "Fundo");
   await page.getByRole("button", { name: "Piquenique", exact: true }).click();
   await expect(page.locator(".free-paper")).toHaveAttribute(
     "data-texture",
@@ -543,7 +628,9 @@ test("tour, book pages, transforms, typography and PNG persist", async ({
   await expect(
     page.getByRole("heading", { name: "Minha primeira folha" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Fechar ferramentas" }).click();
+  if (await compactMural(page))
+    await page.getByRole("button", { name: "Recolher opções" }).click();
+  else await page.getByRole("button", { name: "Fechar ferramentas" }).click();
 
   await page.getByRole("button", { name: "Nova página" }).click();
   await expect(page.getByText("Página 2 de 2", { exact: true })).toBeVisible();
@@ -610,7 +697,7 @@ test("tour, book pages, transforms, typography and PNG persist", async ({
   });
 });
 
-test("tablet tools align with the sheet while both panels are open", async ({
+test("tablet keeps the sheet beside a hierarchical library and tools at the bottom", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 820, height: 1080 });
@@ -619,23 +706,50 @@ test("tablet tools align with the sheet while both panels are open", async ({
   await page.getByRole("button", { name: "Pular apresentação" }).click();
   await page.getByRole("button", { name: "Livre", exact: true }).click();
   await page.getByRole("button", { name: "Pular ajuda" }).click();
-  const paper = page.locator(".free-paper");
-  const panel = page.getByRole("complementary", { name: "Painel de edição" });
+  await openSidebar(page);
+  const sidebar = page.getByRole("complementary", {
+    name: "Menu e biblioteca",
+  });
   await expect(
-    page.getByRole("complementary", { name: "Menu e biblioteca" }),
+    sidebar.getByRole("button", { name: "Fotos", exact: true }),
   ).toBeVisible();
-  await expect(panel).toBeVisible();
-  await expect
-    .poll(async () => {
-      const a = (await paper.boundingBox())!;
-      const b = (await panel.boundingBox())!;
-      return Math.abs(a.y - b.y);
-    })
-    .toBeLessThan(3);
-  const paperBox = (await paper.boundingBox())!;
-  const toolsBox = (await panel.boundingBox())!;
-  expect(toolsBox.x).toBeGreaterThanOrEqual(paperBox.x + paperBox.width);
-  expect(toolsBox.height).toBeLessThanOrEqual(paperBox.height + 1);
+  const paper = page.locator(".free-paper");
+  expect((await paper.boundingBox())!.x).toBeGreaterThan(
+    (await sidebar.boundingBox())!.width,
+  );
+  await sidebar.getByRole("button", { name: "Voltar à navegação" }).click();
+  await expect(
+    sidebar.getByRole("link", { name: "Hoje", exact: true }),
+  ).toBeVisible();
+  await expect(
+    sidebar.getByRole("button", { name: "Fotos", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Fechar menu", exact: true }).click();
+  await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
+  await expect(
+    sidebar.getByRole("link", { name: "Hoje", exact: true }),
+  ).toBeVisible();
+  await sidebar.getByRole("link", { name: "Meu mural", exact: true }).click();
+  await page.getByRole("button", { name: "Fechar menu", exact: true }).click();
+
+  await tapPaper(page);
+  const dock = page.getByRole("complementary", {
+    name: "Ferramentas do mural",
+  });
+  await expect(dock).toBeVisible();
+  const dockBox = (await dock.boundingBox())!;
+  expect(Math.abs(dockBox.y + dockBox.height - 1080)).toBeLessThan(2);
+  await dockTool(page, "Título");
+  await page.getByLabel("Título da página").fill("Meu mural no tablet");
+  await tapPaper(page);
+  await expect(dock).toBeHidden();
+  await tapPaper(page);
+  await expect(
+    dock.getByRole("button", { name: "Fundo", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Meu mural no tablet" }),
+  ).toBeVisible();
 });
 
 test("auto assembly uses the layout, keeps its cards and exports a custom paper", async ({
@@ -719,11 +833,14 @@ test("auto assembly uses the layout, keeps its cards and exports a custom paper"
     exact: true,
   });
   if (await tools.isVisible()) await tools.click();
+  if (await compactMural(page)) await tapPaper(page);
+  await dockTool(page, "Fundo");
   await page.getByLabel("Colocar uma estampa").setInputFiles(pattern);
   await expect(page.locator(".book-leaf")).toHaveAttribute(
     "data-pattern",
     "true",
   );
+  await dockTool(page, "Título");
   await page
     .getByRole("combobox", { name: "Fonte do título" })
     .selectOption("collage");
