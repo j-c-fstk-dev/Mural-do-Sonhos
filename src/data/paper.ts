@@ -1,3 +1,4 @@
+import { brandPaperUrl } from "./brandAssets";
 import type { Paper } from "./model";
 import type { Repository } from "./repository";
 
@@ -69,6 +70,21 @@ export async function drawPageBackground(
   height: number,
   repository: Repository,
 ) {
+  if (paper.brandPaper && !paper.patternId) {
+    const image = new Image();
+    image.src = brandPaperUrl(paper.brandPaper);
+    await image.decode().catch(() => {
+      throw new Error("Não foi possível abrir o papel da coleção.");
+    });
+    const scale = Math.max(
+      width / image.naturalWidth,
+      height / image.naturalHeight,
+    );
+    const w = image.naturalWidth * scale;
+    const h = image.naturalHeight * scale;
+    ctx.drawImage(image, (width - w) / 2, (height - h) / 2, w, h);
+    return;
+  }
   if (!paper.patternId) {
     drawPaper(ctx, paper, width, height);
     return;

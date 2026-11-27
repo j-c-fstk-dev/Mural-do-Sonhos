@@ -398,3 +398,7 @@
   height: 1px;
   transform: translateY(-50%);
 }
+
+.free-sticker-picker img {
+  object-fit: contain;
+}
