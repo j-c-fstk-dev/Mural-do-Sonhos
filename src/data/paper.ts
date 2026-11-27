@@ -1,6 +1,8 @@
 import type { Paper } from "./model";
+import type { Repository } from "./repository";
 
 export const fonts = {
+  collage: { label: "Letras recortadas", family: '"Barriecito", sans-serif' },
   sans: { label: "DM Sans", family: '"DM Sans Variable", sans-serif' },
   display: {
     label: "Playfair Display",
@@ -60,7 +62,33 @@ export const paperPresets = [
 ] as const;
 
 const INK = "#493741";
-export function drawPaper(
+export async function drawPageBackground(
+  ctx: CanvasRenderingContext2D,
+  paper: Paper,
+  width: number,
+  height: number,
+  repository: Repository,
+) {
+  if (!paper.patternId) {
+    drawPaper(ctx, paper, width, height);
+    return;
+  }
+  const asset = await repository.asset(paper.patternId);
+  if (!asset) throw new Error("Não foi possível abrir a estampa da folha.");
+  const image = await createImageBitmap(asset.blob);
+  try {
+    const pattern = ctx.createPattern(image, "repeat");
+    if (!pattern) throw new Error("Não foi possível preparar a estampa.");
+    const scale = (width * 0.3) / image.width;
+    pattern.setTransform(new DOMMatrix().scale(scale));
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, width, height);
+  } finally {
+    image.close();
+  }
+}
+
+function drawPaper(
   ctx: CanvasRenderingContext2D,
   paper: Paper,
   width: number,

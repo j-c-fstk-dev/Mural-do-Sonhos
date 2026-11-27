@@ -1,14 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Check,
   ChevronLeft,
   ChevronRight,
   LayoutTemplate,
+  Images,
   PanelRight,
   Plus,
 } from "lucide-react";
 import { Feedback, Modal, type ScreenProps } from "../components/ui";
+import { useAssetImage } from "../data/useAssetImage";
+import { compressImage } from "../data/media";
+import { AutoMural } from "./AutoMural";
 import { pageStore } from "../data/book";
 import { makeId, type Paper, type Workspace } from "../data/model";
 import { fonts, paperPresets, textures } from "../data/paper";
@@ -31,6 +41,8 @@ export function Book({
   openMenu: () => void;
   rememberMenu: () => void;
 }) {
+  const [compose, setCompose] = useState(false);
+  const [assembled, setAssembled] = useState("");
   const [chooseLayout, setChooseLayout] = useState(false);
   const [showTools, setShowTools] = useState(
     () => !store.data.profile.editor_guide_seen || window.innerWidth > 900,
@@ -48,6 +60,7 @@ export function Book({
   const pages = [null, ...store.data.pages.map((page) => page.id)];
   const index = pages.indexOf(pageId);
   const paper = scoped.data.paper;
+  const { url: patternUrl } = useAssetImage(paper.patternId, store.repository);
   const title =
     paper.title ||
     (!pageId ? store.data.dream.description : "") ||
@@ -63,6 +76,7 @@ export function Book({
   const guiding =
     tourSeen &&
     !chooseLayout &&
+    !compose &&
     !firstChoice &&
     (replayGuide || !store.data.profile.editor_guide_seen);
   useEffect(() => {
@@ -105,6 +119,7 @@ export function Book({
   function changePage(offset: number) {
     const target = pages[index + offset];
     if (target === undefined || action.pending) return;
+    setAssembled("");
     setDirection(offset > 0 ? "next" : "previous");
     void action.run(() =>
       store.mutate((data) => {
@@ -114,6 +129,7 @@ export function Book({
   }
 
   function addPage() {
+    setAssembled("");
     setDirection("next");
     void action.run(() =>
       store.mutate((data) => {
@@ -146,6 +162,55 @@ export function Book({
           closeMobileSidebar();
         }
       });
+  }
+
+  function importPattern(file: File) {
+    void action.run(async () => {
+      const asset = await compressImage(file);
+      await store.mutate(
+        (data) => {
+          if (data.patterns.length >= 40)
+            throw new Error(
+              "Você já guardou 40 estampas. Apague uma para colocar outra.",
+            );
+          const active = pageId
+            ? data.pages.find((page) => page.id === pageId)
+            : data;
+          if (!active) throw new Error("Esta página não está mais disponível.");
+          data.patterns.push({
+            id: asset.id,
+            label:
+              file.name.replace(/\.[^.]+$/, "").slice(0, 500) ||
+              "Minha estampa",
+          });
+          active.paper.patternId = asset.id;
+        },
+        { assets: [asset] },
+      );
+    }, "Estampa aplicada à folha.");
+  }
+
+  function deletePattern(id: string) {
+    if (
+      !confirm(
+        "Apagar esta estampa? As folhas que usam o desenho voltam ao papel anterior.",
+      )
+    )
+      return;
+    void action.run(
+      () =>
+        store.mutate(
+          (data) => {
+            data.patterns = data.patterns.filter(
+              (pattern) => pattern.id !== id,
+            );
+            for (const page of [data, ...data.pages])
+              if (page.paper.patternId === id) page.paper.patternId = null;
+          },
+          { removeAssets: [id] },
+        ),
+      "Estampa apagada.",
+    );
   }
 
   function updatePaper(patch: Partial<Paper>) {
@@ -213,6 +278,23 @@ export function Book({
           <Feedback action={action} />
         </Modal>
       )}
+      {compose && (
+        <AutoMural
+          store={scoped}
+          onClose={() => setCompose(false)}
+          onComplete={(count) => {
+            setCompose(false);
+            setAssembled(
+              count === 1
+                ? "Uma foto colocada na folha."
+                : count
+                  ? `${count} fotos colocadas na folha.`
+                  : "As fotos escolhidas já estão na folha.",
+            );
+            closeMobileSidebar();
+          }}
+        />
+      )}
       <div className="book-toolbar">
         <div
           className="book-pagination"
@@ -248,6 +330,16 @@ export function Book({
         </div>
         <button
           type="button"
+          className="text-button"
+          onClick={() => {
+            setAssembled("");
+            setCompose(true);
+          }}
+        >
+          <Images size={17} /> Montar com fotos
+        </button>
+        <button
+          type="button"
           className="text-button book-help-button"
           aria-expanded={guiding}
           onClick={() => setReplayGuide(true)}
@@ -265,6 +357,11 @@ export function Book({
         </button>
       </div>
       <Feedback action={action} />
+      {assembled && (
+        <p role="status" className="notice success book-assembled">
+          {assembled}
+        </p>
+      )}
       <div className="book-editor" ref={editor}>
         <div className="book-stage" ref={stage}>
           <section
@@ -295,6 +392,14 @@ export function Book({
             }}
             key={pageId ?? "first"}
             className={`book-leaf book-leaf-${direction}`}
+            data-pattern={!!patternUrl}
+            style={
+              patternUrl
+                ? ({
+                    "--page-pattern": `url("${patternUrl}")`,
+                  } as CSSProperties)
+                : undefined
+            }
             aria-label={`Página ${index + 1}`}
           >
             <h1
@@ -378,7 +483,10 @@ export function Book({
                   type="color"
                   value={paper.background}
                   onChange={(event) =>
-                    updatePaper({ background: event.target.value })
+                    updatePaper({
+                      background: event.target.value,
+                      patternId: null,
+                    })
                   }
                 />
               </label>
@@ -390,6 +498,7 @@ export function Book({
                 onChange={(event) =>
                   updatePaper({
                     texture: event.target.value as Paper["texture"],
+                    patternId: null,
                   })
                 }
               >
@@ -409,14 +518,59 @@ export function Book({
                   aria-label={label}
                   data-texture={preset.texture}
                   aria-pressed={
+                    !paper.patternId &&
                     preset.background === paper.background &&
                     preset.texture === paper.texture
                   }
                   style={{ backgroundColor: preset.background }}
-                  onClick={() => updatePaper(preset)}
+                  onClick={() => updatePaper({ ...preset, patternId: null })}
                 />
               ))}
             </div>
+            <label>
+              Colocar uma estampa
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={action.pending || store.data.patterns.length >= 40}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = "";
+                  if (file) importPattern(file);
+                }}
+              />
+            </label>
+            {store.data.patterns.length > 0 && (
+              <>
+                <label>
+                  Estampas guardadas
+                  <select
+                    value={paper.patternId ?? ""}
+                    disabled={action.pending}
+                    onChange={(event) =>
+                      updatePaper({ patternId: event.target.value || null })
+                    }
+                  >
+                    <option value="">Sem estampa</option>
+                    {store.data.patterns.map((pattern) => (
+                      <option key={pattern.id} value={pattern.id}>
+                        {pattern.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {paper.patternId && (
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={action.pending}
+                    onClick={() => deletePattern(paper.patternId!)}
+                  >
+                    Apagar esta estampa
+                  </button>
+                )}
+              </>
+            )}
           </details>
         </aside>
       </div>

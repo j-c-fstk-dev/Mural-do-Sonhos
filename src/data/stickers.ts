@@ -255,6 +255,63 @@ const collections: {
       ],
     ],
   },
+  {
+    name: "Mesa de scrapbook",
+    paper: "#f2dbcb",
+    ink: "#784b52",
+    drawings: [
+      [
+        "ticket",
+        "Bilhete de cinema",
+        "M2 8h28v4a4 4 0 0 0 0 8v4H2v-4a4 4 0 0 0 0-8z M22 10v2m0 3v2m0 3v2m-12-4 3-5 3 5z",
+      ],
+      [
+        "tag",
+        "Etiqueta kraft",
+        "M3 13l9-9h16v16l-9 9z M19 9a2 2 0 1 0 4 0 2 2 0 0 0-4 0z M12 13l8 8m-12-4 8 8",
+      ],
+      [
+        "badge",
+        "Selo de coração",
+        "M16 2l4 3 5 0 1 5 4 3-2 5 1 5-5 1-3 5-5-2-5 2-3-5-5-1 1-5-2-5 4-3 1-5 5 0z M16 22l-6-6c-3-4 3-7 6-3 3-4 9-1 6 3z",
+      ],
+      [
+        "letter",
+        "Cartinha dobrada",
+        "M7 3h13l6 6v20H7z M20 3v6h6M10 14h13m-13 4h10m-10 4h7",
+      ],
+      [
+        "notebook",
+        "Folha arrancada",
+        "M6 3h23v26H6l2-4-2-4 2-4-2-4 2-4z M12 8h4m-4 5h13m-13 5h13m-13 5h8",
+      ],
+      [
+        "tape-flower",
+        "Fita de flores",
+        "M2 8l3 4-3 4 3 4-3 4h28l-3-4 3-4-3-4 3-4z M12 16c-6-3 0-8 0-2 4-5 8 1 2 2 6 3 0 7-2 2-2 6-7 0 0-2z M22 12v8m-4-4h8",
+      ],
+      [
+        "calendar",
+        "Calendário de mesa",
+        "M4 7h24v22H4z M4 13h24M10 3v7m12-7v7M9 18h1m5 0h1m5 0h1m-12 5h1m5 0h1m5 0h1",
+      ],
+      [
+        "wax",
+        "Lacre de carta",
+        "M5 13l2-6 6-2 6-2 5 5 3 5 2 7-6 4-5 4-8-2-5-4-2-5z M19 10a7 7 0 1 0 4 10m-10-3 2 2 6-6",
+      ],
+      [
+        "ribbon",
+        "Faixa de papel",
+        "M6 9h20v13H6z M6 13H2l2 5-2 5h6v-1m16 0v1h6l-2-5 2-5h-4M10 15h12m-12 3h8",
+      ],
+      [
+        "daisies",
+        "Flores prensadas",
+        "M16 30c1-10-2-17-7-20m7 20c-1-9 4-12 9-16M9 12c-9 0-8-7-3-5-2-6 6-6 5-1 5-3 8 4 2 4 4 4-2 7-4 2z M23 15c-6-1-5-5-1-5-2-5 4-7 5-2 4-2 6 2 2 5 3 4-3 7-6 2z",
+      ],
+    ],
+  },
 ];
 
 function sticker(

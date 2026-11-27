@@ -34,6 +34,8 @@ const template = z.enum([
 ]);
 const font = z.enum(Object.keys(fonts) as (keyof typeof fonts)[]);
 const color = z.string().regex(/^#[0-9a-f]{6}$/i);
+const photoFrame = z.enum(["plain", "polaroid"]);
+export type PhotoFrame = z.infer<typeof photoFrame>;
 const freeGeometry = {
   id,
   x: z.number().min(0).max(1000),
@@ -43,7 +45,12 @@ const freeGeometry = {
   rotation: z.number().min(-180).max(180).default(0),
 };
 const freeItemSchema = z.discriminatedUnion("kind", [
-  z.object({ ...freeGeometry, kind: z.literal("photo"), asset_id: id }),
+  z.object({
+    ...freeGeometry,
+    kind: z.literal("photo"),
+    asset_id: id,
+    frame: photoFrame.optional(),
+  }),
   z.object({
     ...freeGeometry,
     kind: z.literal("text"),
@@ -79,6 +86,7 @@ const paper = z
     titleFont: font.default("display"),
     titleColor: color.default("#493741"),
     background: color.default("#fcf8ee"),
+    patternId: id.nullable().default(null),
     texture: z
       .enum(Object.keys(textures) as (keyof typeof textures)[])
       .default("dots"),
@@ -97,6 +105,7 @@ const cards = z
       caption: text,
       color: z.enum(["lavender", "peach", "sage", "butter"]),
       position: z.number().int().min(0).max(39),
+      frame: photoFrame.optional(),
     }),
   )
   .max(40);
@@ -145,6 +154,10 @@ export const workspaceSchema = z
       .array(z.object({ id, label: text, created_at: timestamp }))
       .max(40)
       .default([]),
+    patterns: z
+      .array(z.object({ id, label: text }))
+      .max(40)
+      .default([]),
     cards,
     free_items: freeItems.default([]),
     paper,
@@ -191,6 +204,7 @@ export const workspaceSchema = z
       data.cards,
       data.free_items,
       data.pages,
+      data.patterns,
       ...data.pages.flatMap((page) => [page.cards, page.free_items]),
       data.events,
       data.reviews,
@@ -202,6 +216,16 @@ export const workspaceSchema = z
           message: "Identificadores duplicados.",
         });
     const boards = [data, ...data.pages];
+    const patterns = new Set(data.patterns.map((pattern) => pattern.id));
+    if (
+      boards.some(
+        ({ paper }) => paper.patternId && !patterns.has(paper.patternId),
+      )
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Estampa da folha não encontrada.",
+      });
     const allCards = boards.flatMap((board) => board.cards);
     const allFreeItems = boards.flatMap((board) => board.free_items);
     if (

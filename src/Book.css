@@ -520,3 +520,83 @@
   font-size: 16px;
   margin: 2px 4px 6px;
 }
+
+.book-leaf[data-pattern="true"] .free-paper,
+.book-leaf[data-pattern="true"] .template-paper {
+  background-image: var(--page-pattern);
+  background-size: 30% auto;
+  background-repeat: repeat;
+  background-position: top left;
+}
+.book-assembled {
+  margin: 8px 14px 0;
+}
+.auto-mural-select {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.auto-mural-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 7px;
+  max-height: 32dvh;
+  overflow: auto;
+  padding: 3px;
+}
+.auto-mural-thumb {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  border: 2px solid #e8dce9;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.auto-mural-thumb:has(:checked) {
+  border-color: #7b518e;
+  background: #f0e6f4;
+}
+.auto-mural-thumb img,
+.auto-mural-thumb .image-placeholder {
+  width: 100%;
+  height: 68px;
+  display: block;
+  object-fit: cover;
+}
+.auto-mural-thumb input[type="checkbox"] {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: #704885;
+}
+.auto-mural-thumb span {
+  display: block;
+  overflow: hidden;
+  padding: 2px 4px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+.template-workspace .mural-card[data-frame="polaroid"] {
+  background: #fffdf8;
+  border-radius: 2px;
+  padding-bottom: 14px;
+}
+.template-workspace .mural-card[data-frame="polaroid"] .tape {
+  display: none;
+}
+.book-gallery > label > select {
+  width: 100%;
+  padding: 5px;
+}
+.template-workspace .polaroid .mural-card[data-frame="plain"] {
+  padding-bottom: 0;
+  border-radius: 8px;
+  background: #fff;
+}

@@ -19,6 +19,8 @@ import {
   Trash2,
   Type,
 } from "lucide-react";
+import { PhotoFrameField } from "../components/PhotoFrameField";
+import { freePhotoRatio } from "../data/autoMural";
 import { LocalImage } from "../components/LocalImage";
 import { Feedback, type ScreenProps } from "../components/ui";
 import {
@@ -33,16 +35,22 @@ import {
   MIN_ITEM_WIDTH,
 } from "../data/freeBoard";
 import { importGalleryPhotos, removeGalleryPhoto } from "../data/media";
-import { FREE_ITEM_LIMIT, makeId, type FreeItem } from "../data/model";
+import {
+  FREE_ITEM_LIMIT,
+  makeId,
+  type FreeItem,
+  type PhotoFrame,
+} from "../data/model";
 import { fonts, shapes } from "../data/paper";
 import { getSticker, stickerCollections } from "../data/stickers";
 import { useAction } from "../data/useAction";
 import "./FreeMural.css";
 
+type PhotoItem = Extract<FreeItem, { kind: "photo" }>;
 type TextItem = Extract<FreeItem, { kind: "text" }>;
 type ShapeItem = Extract<FreeItem, { kind: "shape" }>;
 type Content =
-  | { kind: "photo"; asset_id: string }
+  | Pick<PhotoItem, "kind" | "asset_id" | "frame">
   | { kind: "sticker"; sticker: string }
   | Pick<ShapeItem, "kind" | "shape" | "color">
   | Pick<
@@ -389,6 +397,7 @@ export function FreeMural({
   );
   const [category, setCategory] = useState(0);
   const [fontsReady, setFontsReady] = useState(false);
+  const [newFrame, setNewFrame] = useState<PhotoFrame>();
   const [inlineId, setInlineId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState<{
     id: string;
@@ -449,21 +458,28 @@ export function FreeMural({
           content.kind === "photo"
             ? await store.repository.asset(content.asset_id)
             : undefined;
-        const base = { id, x: 0, y: 0, rotation: 0, width: 170 };
-        if (content.kind === "photo") {
-          if (!asset) throw new Error("Imagem não encontrada.");
-          base.width = Math.max(
-            MIN_ITEM_WIDTH,
-            Math.min(360, (320 * asset.width) / asset.height),
-          );
-        }
+        if (content.kind === "photo" && !asset)
+          throw new Error("Imagem não encontrada.");
+        const ratio = asset
+          ? freePhotoRatio(
+              asset,
+              content.kind === "photo" ? content.frame : undefined,
+            )
+          : 1;
+        const width =
+          content.kind === "photo"
+            ? clamp(320 * ratio, MIN_ITEM_WIDTH, 360)
+            : content.kind === "text"
+              ? 365
+              : 170;
         const item = {
-          ...base,
           ...content,
-          width: content.kind === "text" ? 365 : base.width,
-          height: asset
-            ? clamp((base.width * asset.height) / asset.width, 16, BOARD_HEIGHT)
-            : undefined,
+          id,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          width,
+          height: asset ? clamp(width / ratio, 16, BOARD_HEIGHT) : undefined,
         };
         await store.mutate((data) => {
           if (data.free_items.length >= FREE_ITEM_LIMIT)
@@ -503,7 +519,11 @@ export function FreeMural({
 
   function update(
     item: FreeItem,
-    patch: Partial<Geometry> | Partial<TextItem> | Partial<ShapeItem>,
+    patch:
+      | Partial<Geometry>
+      | Partial<TextItem>
+      | Partial<ShapeItem>
+      | Partial<PhotoItem>,
   ) {
     void action.run(() =>
       store.mutate((data) => {
@@ -665,6 +685,9 @@ export function FreeMural({
                     Escolha uma foto do seu aparelho.
                   </p>
                 )}
+                {!!store.data.gallery.length && (
+                  <PhotoFrameField value={newFrame} onChange={setNewFrame} />
+                )}
                 <div className="free-photo-picker">
                   {store.data.gallery.map((photo) => (
                     <div key={photo.id} className="book-photo">
@@ -674,7 +697,11 @@ export function FreeMural({
                         aria-label={`Adicionar foto: ${photo.label}`}
                         disabled={full || action.pending}
                         onClick={() =>
-                          add({ kind: "photo", asset_id: photo.id })
+                          add({
+                            kind: "photo",
+                            asset_id: photo.id,
+                            frame: newFrame,
+                          })
                         }
                       >
                         <LocalImage
@@ -807,6 +834,7 @@ export function FreeMural({
               >
                 <button
                   className={`free-item free-item-${item.kind}`}
+                  data-frame={shown.kind === "photo" ? shown.frame : undefined}
                   type="button"
                   aria-label={`${{ photo: "Foto", text: "Texto", shape: "Forma", sticker: "Figurinha" }[item.kind]}: ${label(item)}`}
                   aria-pressed={selectedId === item.id}
@@ -963,6 +991,12 @@ export function FreeMural({
                         body === null ? null : { id: selected.id, body },
                       )
                     }
+                  />
+                )}
+                {selected.kind === "photo" && (
+                  <PhotoFrameField
+                    value={selected.frame}
+                    onChange={(frame) => update(selected, { frame })}
                   />
                 )}
                 {selected.kind === "shape" && (

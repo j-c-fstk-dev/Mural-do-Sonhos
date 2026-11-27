@@ -1,6 +1,6 @@
 import { download } from "./media";
 import type { FreeItem, Workspace } from "./model";
-import { drawPaper, fonts, shapes } from "./paper";
+import { drawPageBackground, fonts, shapes } from "./paper";
 import type { Repository } from "./repository";
 import { getSticker } from "./stickers";
 
@@ -189,7 +189,13 @@ export async function exportFreeMural(data: Workspace, repository: Repository) {
   canvas.height = BOARD_HEIGHT * 2;
   const ctx = canvas.getContext("2d")!;
   ctx.scale(2, 2);
-  drawPaper(ctx, data.paper, BOARD_WIDTH, BOARD_HEIGHT);
+  await drawPageBackground(
+    ctx,
+    data.paper,
+    BOARD_WIDTH,
+    BOARD_HEIGHT,
+    repository,
+  );
   for (const item of data.free_items) {
     const height = itemHeight(item);
     ctx.save();
@@ -214,7 +220,25 @@ export async function exportFreeMural(data: Workspace, repository: Repository) {
       if (!asset) throw new Error("Imagem não encontrada. Revise o mural.");
       const image = await createImageBitmap(asset.blob);
       try {
-        if (item.height) ctx.drawImage(image, 0, 0, item.width, height);
+        if (item.frame === "polaroid") {
+          ctx.fillStyle = "#fffdf8";
+          ctx.fillRect(0, 0, item.width, height);
+          const x = item.width * 0.065;
+          const y = height * 0.06;
+          const w = item.width * 0.87;
+          const h = height * 0.755;
+          const scale = Math.max(w / image.width, h / image.height);
+          ctx.beginPath();
+          ctx.rect(x, y, w, h);
+          ctx.clip();
+          ctx.drawImage(
+            image,
+            x + (w - image.width * scale) / 2,
+            y + (h - image.height * scale) / 2,
+            image.width * scale,
+            image.height * scale,
+          );
+        } else if (item.height) ctx.drawImage(image, 0, 0, item.width, height);
         else {
           const scale = Math.min(
             item.width / image.width,
