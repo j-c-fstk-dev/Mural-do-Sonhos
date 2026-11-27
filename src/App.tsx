@@ -1,8 +1,11 @@
+import { useCompactEditor } from "./features/useCompactEditor";
 import { useAction } from "./data/useAction";
 import { useCallback, useEffect, useState } from "react";
 import {
   CalendarCheck,
   ChevronRight,
+  ChevronLeft,
+  ArrowLeft,
   CloudOff,
   Compass,
   Images,
@@ -45,17 +48,23 @@ function currentRoute() {
 function App() {
   const store = useWorkspace();
   const [route, setRoute] = useState(currentRoute);
+  const compact = useCompactEditor();
+  const compactMural = compact && route === "/";
+  const [menuLevel, setMenuLevel] = useState<"navigation" | "library">(
+    "navigation",
+  );
   const [menuChoice, setMenu] = useState<boolean | null>(null);
-  const firstEditorVisit = store.data?.profile.editor_guide_seen === false;
   const menu =
-    menuChoice ??
-    (window.innerWidth > 900 || (route === "/" && firstEditorVisit));
-  const requestedMenu = useCallback(() => setMenu(true), []);
+    menuChoice ?? (!compact || (!compactMural && window.innerWidth > 900));
+  const requestedMenu = useCallback(() => {
+    setMenuLevel("library");
+    setMenu(true);
+  }, []);
   const [sidebar, setSidebar] = useState<HTMLDivElement | null>(null);
   const [replayTour, setReplayTour] = useState(false);
-  function closeMobileSidebar() {
-    if (window.innerWidth <= 900) setMenu(false);
-  }
+  const closeMobileSidebar = useCallback(() => {
+    if (compact) setMenu(false);
+  }, [compact]);
   const [age, setAge] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
   const appInstall = useAppInstall();
@@ -66,8 +75,12 @@ function App() {
   } = useRegisterSW();
   useEffect(() => {
     const navigate = () => {
-      setRoute(currentRoute());
-      closeMobileSidebar();
+      const next = currentRoute();
+      setRoute(next);
+      if (compact && next !== "/") {
+        setMenu(false);
+        setMenuLevel("navigation");
+      }
       window.scrollTo(0, 0);
     };
     const online = () => setOffline(!navigator.onLine);
@@ -79,7 +92,7 @@ function App() {
       window.removeEventListener("online", online);
       window.removeEventListener("offline", online);
     };
-  }, []);
+  }, [compact]);
   useEffect(() => {
     document.title = `${routes.find((item) => item.path === route)?.name || "Seu espaço"} · Mural dos Sonhos`;
     const timer = setTimeout(
@@ -159,7 +172,10 @@ function App() {
     <a
       href={`#${item.path}`}
       key={item.path}
-      onClick={closeMobileSidebar}
+      onClick={() => {
+        if (compact && item.path === "/") requestedMenu();
+        else closeMobileSidebar();
+      }}
       aria-current={route === item.path ? "page" : undefined}
     >
       <item.icon size={17} /> {item.name}
@@ -178,15 +194,17 @@ function App() {
         Pular para o conteúdo
       </a>
       <header className="book-header">
-        <button
-          className="icon-button"
-          aria-label={menu ? "Fechar menu" : "Abrir menu"}
-          aria-expanded={menu}
-          aria-controls="book-sidebar"
-          onClick={() => setMenu(!menu)}
-        >
-          <PanelLeft size={22} />
-        </button>
+        {!compactMural && (
+          <button
+            className="icon-button"
+            aria-label={menu ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={menu}
+            aria-controls="book-sidebar"
+            onClick={() => setMenu(!menu)}
+          >
+            <PanelLeft size={22} />
+          </button>
+        )}
         <a href="#/" className="brand">
           <span className="brand-symbol" aria-hidden="true">
             ✳︎
@@ -198,8 +216,26 @@ function App() {
           {offline ? "Sem conexão" : "Salvo neste navegador"}
         </span>
       </header>
-      <div className="book-shell" data-menu={menu} data-mural={route === "/"}>
-        {menu && route !== "/" && (
+      <div
+        className="book-shell"
+        data-menu={menu}
+        data-mural={route === "/"}
+        data-compact-mural={compactMural}
+        data-menu-level={menuLevel}
+      >
+        {compactMural && (
+          <button
+            type="button"
+            className="book-sidebar-edge icon-button"
+            aria-label={menu ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={menu}
+            aria-controls="book-sidebar"
+            onClick={() => setMenu(!menu)}
+          >
+            {menu ? <ChevronLeft size={22} /> : <ChevronRight size={22} />}
+          </button>
+        )}
+        {menu && (route !== "/" || compactMural) && (
           <button
             className="book-backdrop"
             aria-label="Fechar barra lateral"
@@ -212,9 +248,16 @@ function App() {
           hidden={!menu}
           aria-label="Menu e biblioteca"
         >
+          <button
+            type="button"
+            className="book-sidebar-back text-button"
+            onClick={() => setMenuLevel("navigation")}
+          >
+            <ArrowLeft size={17} /> Voltar à navegação
+          </button>
           <details
             className="book-nav-group"
-            open={window.innerWidth > 900 || route !== "/"}
+            open={compactMural || window.innerWidth > 900 || route !== "/"}
           >
             <summary>Ir para outra parte do app</summary>
             <nav aria-label="Navegação principal">
@@ -249,10 +292,9 @@ function App() {
           {route === "/" ? (
             <Book
               store={loaded}
+              compact={compactMural}
               sidebar={sidebar}
-              closeMobileSidebar={() => {
-                if (!firstEditorVisit) closeMobileSidebar();
-              }}
+              closeMobileSidebar={closeMobileSidebar}
               openMenu={requestedMenu}
               rememberMenu={() => setMenu(menu)}
               tourSeen={store.data.profile.tour_seen && !replayTour}

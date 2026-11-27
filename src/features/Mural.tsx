@@ -1,3 +1,4 @@
+import type { EditContext } from "./EditorDock";
 import { createPortal } from "react-dom";
 import { useAction } from "../data/useAction";
 import { useRef, useState, type PointerEvent } from "react";
@@ -154,12 +155,17 @@ export function Mural({
   inspector,
   closeMobileSidebar,
   showInspector,
+  onContext,
+  openLibrary,
 }: ScreenProps & {
   sidebar: HTMLElement | null;
   inspector: HTMLElement | null;
   closeMobileSidebar: () => void;
   showInspector: () => void;
+  onContext?: (context: EditContext) => void;
+  openLibrary: () => void;
 }) {
+  const [activeCardId, setActiveCard] = useState<string | null>(null);
   const [editor, setEditor] = useState<Card | "quote" | null>(null);
   const [newFrame, setNewFrame] = useState<PhotoFrame>();
   const [selection, setSelection] = useState<Placement | null>(null);
@@ -170,6 +176,26 @@ export function Mural({
   const dragged = useRef<Placement | null>(null);
   const action = useAction();
   const cards = sortedCards(store.data.cards);
+  const activeCard = cards.find((card) => card.id === activeCardId);
+  function activateCard(card: Card) {
+    setActiveCard(card.id);
+    onContext?.(card.kind === "image" ? "card-photo" : "card-text");
+  }
+  function removeCard(card: Card) {
+    if (!confirm("Tirar este cartão da folha? A foto fica na galeria.")) return;
+    void action
+      .run(() =>
+        store.mutate((data) => {
+          data.cards = data.cards.filter((row) => row.id !== card.id);
+        }),
+      )
+      .then((ok) => {
+        if (ok && activeCardId === card.id) {
+          setActiveCard(null);
+          onContext?.("paper");
+        }
+      });
+  }
   const slotCount = Math.min(
     40,
     Math.max(6, Math.ceil(((cards.at(-1)?.position ?? -1) + 1) / 6) * 6) +
@@ -287,11 +313,79 @@ export function Mural({
         inspector={inspector}
         closeMobileSidebar={closeMobileSidebar}
         showInspector={showInspector}
+        onContext={onContext}
       />
     );
 
   return (
     <div className="template-workspace">
+      {onContext &&
+        inspector &&
+        activeCard &&
+        createPortal(
+          <div className="book-tool" data-dock-group="card">
+            {activeCard.kind === "image" && (
+              <div data-dock-field="frame">
+                <PhotoFrameField
+                  fromLayout
+                  value={activeCard.frame}
+                  onChange={(frame) =>
+                    void action.run(() =>
+                      store.mutate((data) => {
+                        const card = data.cards.find(
+                          (row) => row.id === activeCard.id,
+                        );
+                        if (card)
+                          Object.assign(card, { frame, updated_at: now() });
+                      }),
+                    )
+                  }
+                />
+              </div>
+            )}
+            <button
+              type="button"
+              data-dock-field="card"
+              onClick={() => setEditor(activeCard)}
+            >
+              Abrir editor do cartão
+            </button>
+            <div data-dock-field="layers" className="book-compact-buttons">
+              <button
+                type="button"
+                disabled={activeCard.position === 0 || action.pending}
+                onClick={() =>
+                  place(
+                    { kind: "card", id: activeCard.id },
+                    activeCard.position - 1,
+                  )
+                }
+              >
+                Mover para trás
+              </button>
+              <button
+                type="button"
+                disabled={activeCard.position >= 39 || action.pending}
+                onClick={() =>
+                  place(
+                    { kind: "card", id: activeCard.id },
+                    activeCard.position + 1,
+                  )
+                }
+              >
+                Mover para frente
+              </button>
+            </div>
+            <button
+              type="button"
+              data-dock-field="remove"
+              onClick={() => removeCard(activeCard)}
+            >
+              Tirar cartão da folha
+            </button>
+          </div>,
+          inspector,
+        )}
       {sidebar &&
         createPortal(
           <div className="book-gallery" data-guide="photos">
@@ -432,6 +526,12 @@ export function Mural({
         <Feedback action={action} />
         <div
           data-guide="sheet"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setActiveCard(null);
+              onContext?.("paper");
+            }
+          }}
           className={`mural-grid template-paper ${store.data.profile.template} ${selection ? "placing" : ""}`}
           data-texture={store.data.paper.texture}
           style={{ backgroundColor: store.data.paper.background }}
@@ -480,6 +580,25 @@ export function Mural({
                             : "plain"))
                         : undefined
                     }
+                    data-active-card={!!onContext && activeCardId === card.id}
+                    tabIndex={onContext ? 0 : undefined}
+                    onKeyDown={(event) => {
+                      if (
+                        onContext &&
+                        event.target === event.currentTarget &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        activateCard(card);
+                      }
+                    }}
+                    onClick={(event) => {
+                      if (
+                        onContext &&
+                        !(event.target as HTMLElement).closest("button, a")
+                      )
+                        activateCard(card);
+                    }}
                     draggable
                     onDragStart={(event) => {
                       event.dataTransfer.setData(
@@ -559,19 +678,7 @@ export function Mural({
                         className="icon-button"
                         aria-label={`Retirar recorte ${position + 1} do mural`}
                         onClick={() => {
-                          if (
-                            !confirm(
-                              "Tirar este cartão da folha? A foto fica na galeria.",
-                            )
-                          )
-                            return;
-                          void action.run(() =>
-                            store.mutate((data) => {
-                              data.cards = data.cards.filter(
-                                (row) => row.id !== card.id,
-                              );
-                            }),
-                          );
+                          removeCard(card);
                         }}
                       >
                         <X size={16} />
@@ -584,6 +691,8 @@ export function Mural({
                     aria-label={`Adicionar foto ao espaço ${position + 1}`}
                     onClick={() => {
                       if (selection) place(selection, position);
+                      else if (onContext && store.data.gallery.length)
+                        openLibrary();
                       else if (store.data.gallery.length)
                         document
                           .querySelector<HTMLElement>(".photo-select")
