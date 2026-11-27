@@ -24,7 +24,7 @@ const steps = [
   {
     target: "sheet",
     title: "Mova o que colocou",
-    body: "Arraste para mudar de lugar. Toque em uma foto: os quadradinhos mudam o tamanho e a seta redonda gira.",
+    body: "Arraste para mudar de lugar. As linhas roxas ajudam a alinhar com a folha ou com outra foto. Os quadradinhos mudam o tamanho e a seta redonda gira.",
   },
   {
     target: "shapes",

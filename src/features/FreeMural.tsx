@@ -20,6 +20,11 @@ import {
   Type,
 } from "lucide-react";
 import { PhotoFrameField } from "../components/PhotoFrameField";
+import {
+  alignDraggedItem,
+  alignmentTargets,
+  type AlignmentGuide,
+} from "../data/alignment";
 import { freePhotoRatio } from "../data/autoMural";
 import { LocalImage } from "../components/LocalImage";
 import { Feedback, type ScreenProps } from "../components/ui";
@@ -77,6 +82,7 @@ type Drag = {
   x: number;
   y: number;
   moved: boolean;
+  targets?: ReturnType<typeof alignmentTargets>;
 };
 const handles: Exclude<Handle, "rotate" | "move">[] = [
   "n",
@@ -403,7 +409,10 @@ export function FreeMural({
     id: string;
     body: string;
   } | null>(null);
-  const [preview, setPreview] = useState<FreeItem | null>(null);
+  const [preview, setPreview] = useState<{
+    item: FreeItem;
+    guides: AlignmentGuide[];
+  } | null>(null);
   const board = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
   const action = useAction();
@@ -428,7 +437,7 @@ export function FreeMural({
   }, []);
 
   function previewItem(item: FreeItem) {
-    if (preview?.id === item.id) return preview;
+    if (preview?.item.id === item.id) return preview.item;
     if (item.kind === "text" && draftText?.id === item.id)
       return fitItem({ ...item, body: draftText.body }, item.x, item.y);
     return item;
@@ -568,10 +577,29 @@ export function FreeMural({
 
   function point(event: PointerEvent<HTMLButtonElement>) {
     const rect = board.current!.getBoundingClientRect();
+    const scaleX = BOARD_WIDTH / rect.width;
+    const scaleY = BOARD_HEIGHT / rect.height;
     return {
-      x: ((event.clientX - rect.left) * BOARD_WIDTH) / rect.width,
-      y: ((event.clientY - rect.top) * BOARD_HEIGHT) / rect.height,
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY,
+      scaleX,
+      scaleY,
     };
+  }
+
+  function positionPreview(
+    current: Drag,
+    position: ReturnType<typeof point>,
+    pointerType: string,
+  ) {
+    const item = transformItem(current, position.x, position.y);
+    const distance = pointerType === "touch" ? 8 : 5;
+    return current.targets
+      ? alignDraggedItem(item, current.targets, {
+          x: distance * position.scaleX,
+          y: distance * position.scaleY,
+        })
+      : { item, guides: [] };
   }
 
   function start(
@@ -588,6 +616,7 @@ export function FreeMural({
       item,
       handle,
       moved: false,
+      targets: handle === "move" ? alignmentTargets(items, item.id) : undefined,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -595,10 +624,14 @@ export function FreeMural({
   function move(event: PointerEvent<HTMLButtonElement>) {
     const current = drag.current;
     if (!current || event.pointerId !== current.pointer) return;
-    const { x, y } = point(event);
-    if (!current.moved && Math.hypot(x - current.x, y - current.y) < 4) return;
+    const next = point(event);
+    if (
+      !current.moved &&
+      Math.hypot(next.x - current.x, next.y - current.y) < 4
+    )
+      return;
     current.moved = true;
-    setPreview(transformItem(current, x, y));
+    setPreview(positionPreview(current, next, event.pointerType));
   }
 
   function finish(event: PointerEvent<HTMLButtonElement>, save: boolean) {
@@ -607,8 +640,9 @@ export function FreeMural({
     drag.current = null;
     setPreview(null);
     if (save && current.moved) {
-      const { x: px, y: py } = point(event);
-      const { x, y, width, height, rotation } = transformItem(current, px, py);
+      const {
+        item: { x, y, width, height, rotation },
+      } = positionPreview(current, point(event), event.pointerType);
       update(current.item, { x, y, width, height, rotation });
     }
   }
@@ -875,6 +909,27 @@ export function FreeMural({
               </div>
             );
           })}
+          {preview?.guides.map(({ axis, position, from, to }) => (
+            <div
+              key={axis}
+              className={`book-alignment-guide guide-${axis}`}
+              data-axis={axis}
+              aria-hidden="true"
+              style={
+                axis === "x"
+                  ? {
+                      left: `clamp(1px, ${(position / BOARD_WIDTH) * 100}%, calc(100% - 1px))`,
+                      top: `${(from / BOARD_HEIGHT) * 100}%`,
+                      height: `${((to - from) / BOARD_HEIGHT) * 100}%`,
+                    }
+                  : {
+                      top: `clamp(1px, ${(position / BOARD_HEIGHT) * 100}%, calc(100% - 1px))`,
+                      left: `${(from / BOARD_WIDTH) * 100}%`,
+                      width: `${((to - from) / BOARD_WIDTH) * 100}%`,
+                    }
+              }
+            />
+          ))}
           {selected?.kind === "text" && inlineId === selected.id && (
             <div
               className="book-inline-position"
