@@ -1,17 +1,14 @@
 import { useAction } from "../data/useAction";
 import { useEffect, useRef, useState } from "react";
-import { Download, HardDrive, Smartphone, Trash2, Upload } from "lucide-react";
+import { Download, HardDrive, Trash2, Upload } from "lucide-react";
 import { exportBackup, readBackup } from "../data/media";
 import { Feedback, PageTitle, type ScreenProps } from "../components/ui";
-import type { InstallPrompt } from "../pwa";
+import type { useAppInstall } from "../pwa";
+import { InstallApp } from "./InstallApp";
 export function Settings({
   store,
-  installPrompt,
-  onInstall,
-}: ScreenProps & {
-  installPrompt: InstallPrompt | null;
-  onInstall: () => void;
-}) {
+  appInstall,
+}: ScreenProps & { appInstall: ReturnType<typeof useAppInstall> }) {
   const action = useAction();
   const input = useRef<HTMLInputElement>(null);
   const [estimate, setEstimate] = useState<StorageEstimate | null>(null);
@@ -118,25 +115,7 @@ export function Settings({
             }}
           />
         </section>
-        <section className="surface">
-          <Smartphone size={25} />
-          <h2>Instalar o app</h2>
-          <p>
-            Depois de abrir o mural pela primeira vez, você pode usar o app
-            mesmo sem internet.
-          </p>
-          {installPrompt ? (
-            <button onClick={onInstall}>Instalar app</button>
-          ) : (
-            <>
-              <p className="small">
-                No Android, procure “Instalar app” no menu do navegador. No
-                iPhone, use Compartilhar → Adicionar à Tela de Início no Safari.
-                A disponibilidade depende do navegador.
-              </p>
-            </>
-          )}
-        </section>
+        <InstallApp {...appInstall} />
         <section className="surface danger-zone">
           <Trash2 size={25} />
           <h2>Apagar tudo deste navegador</h2>

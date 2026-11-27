@@ -27,7 +27,7 @@ import { History, Today } from "./features/Today";
 import { Review } from "./features/Review";
 import { Prompts } from "./features/Prompts";
 import { Settings } from "./features/Settings";
-import type { InstallPrompt } from "./pwa";
+import { useAppInstall } from "./pwa";
 import "./App.css";
 const routes = [
   { path: "/", name: "Meu mural", icon: Images },
@@ -58,9 +58,7 @@ function App() {
   }
   const [age, setAge] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
-  const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(
-    null,
-  );
+  const appInstall = useAppInstall();
   const action = useAction();
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -73,19 +71,13 @@ function App() {
       window.scrollTo(0, 0);
     };
     const online = () => setOffline(!navigator.onLine);
-    const install = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPrompt);
-    };
     window.addEventListener("hashchange", navigate);
     window.addEventListener("online", online);
     window.addEventListener("offline", online);
-    window.addEventListener("beforeinstallprompt", install);
     return () => {
       window.removeEventListener("hashchange", navigate);
       window.removeEventListener("online", online);
       window.removeEventListener("offline", online);
-      window.removeEventListener("beforeinstallprompt", install);
     };
   }, []);
   useEffect(() => {
@@ -99,14 +91,6 @@ function App() {
     );
     return () => clearTimeout(timer);
   }, [route, store.data?.profile.age_confirmed]);
-  async function install() {
-    if (!installPrompt) return;
-    await action.run(async () => {
-      await installPrompt.prompt();
-      await installPrompt.userChoice;
-      setInstallPrompt(null);
-    });
-  }
   if (!store.data)
     return (
       <main className="loading-screen">
@@ -286,11 +270,7 @@ function App() {
           ) : route === "/prompts" ? (
             <Prompts store={loaded} />
           ) : route === "/ajustes" ? (
-            <Settings
-              store={loaded}
-              installPrompt={installPrompt}
-              onInstall={() => void install()}
-            />
+            <Settings store={loaded} appInstall={appInstall} />
           ) : (
             <section className="empty-state">
               <h1 tabIndex={-1}>Esta página não existe.</h1>

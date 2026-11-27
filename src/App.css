@@ -1546,3 +1546,21 @@ footer a {
     opacity: 0.25;
   }
 }
+
+.install-app details {
+  border-top: 1px solid #e6dce7;
+  margin-top: 9px;
+}
+.install-app summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 650;
+}
+.install-app ol,
+.install-app ul {
+  padding-left: 22px;
+  margin: 0 0 10px;
+}
+.install-app li + li {
+  margin-top: 5px;
+}

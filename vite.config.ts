@@ -12,6 +12,7 @@ export default defineConfig({
         "icons/maskable-512.png",
       ],
       manifest: {
+        id: "/",
         name: "Mural dos Sonhos",
         short_name: "Meus Sonhos",
         description:
@@ -20,6 +21,7 @@ export default defineConfig({
         start_url: "/",
         scope: "/",
         display: "standalone",
+        prefer_related_applications: false,
         background_color: "#faf8f4",
         theme_color: "#61506e",
         icons: [
