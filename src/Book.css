@@ -600,3 +600,41 @@
   border-radius: 8px;
   background: #fff;
 }
+
+.book-leaf[data-brand-paper="true"] .free-paper,
+.book-leaf[data-brand-paper="true"] .template-paper {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.brand-paper-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 5px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 3px;
+}
+.brand-paper-grid button {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: #fffdf8;
+  color: #50385c;
+  border: 1px solid #e6dce7;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.brand-paper-grid button[aria-pressed="true"] {
+  outline: 2px solid #7c5092;
+  outline-offset: -2px;
+}
+.brand-paper-grid img {
+  display: block;
+  width: 100%;
+  height: 48px;
+  border-radius: 3px;
+  object-fit: cover;
+}

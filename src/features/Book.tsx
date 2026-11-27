@@ -1,3 +1,4 @@
+import { brandPapers, brandPaperUrl } from "../data/brandAssets";
 import {
   useCallback,
   useEffect,
@@ -60,7 +61,13 @@ export function Book({
   const pages = [null, ...store.data.pages.map((page) => page.id)];
   const index = pages.indexOf(pageId);
   const paper = scoped.data.paper;
-  const { url: patternUrl } = useAssetImage(paper.patternId, store.repository);
+  const { url: importedPatternUrl } = useAssetImage(
+    paper.patternId,
+    store.repository,
+  );
+  const brandUrl =
+    !paper.patternId && paper.brandPaper ? brandPaperUrl(paper.brandPaper) : "";
+  const patternUrl = importedPatternUrl || brandUrl;
   const title =
     paper.title ||
     (!pageId ? store.data.dream.description : "") ||
@@ -184,6 +191,7 @@ export function Book({
               "Minha estampa",
           });
           active.paper.patternId = asset.id;
+          active.paper.brandPaper = null;
         },
         { assets: [asset] },
       );
@@ -393,6 +401,7 @@ export function Book({
             key={pageId ?? "first"}
             className={`book-leaf book-leaf-${direction}`}
             data-pattern={!!patternUrl}
+            data-brand-paper={!!brandUrl}
             style={
               patternUrl
                 ? ({
@@ -486,6 +495,7 @@ export function Book({
                     updatePaper({
                       background: event.target.value,
                       patternId: null,
+                      brandPaper: null,
                     })
                   }
                 />
@@ -499,6 +509,7 @@ export function Book({
                   updatePaper({
                     texture: event.target.value as Paper["texture"],
                     patternId: null,
+                    brandPaper: null,
                   })
                 }
               >
@@ -519,14 +530,40 @@ export function Book({
                   data-texture={preset.texture}
                   aria-pressed={
                     !paper.patternId &&
+                    !paper.brandPaper &&
                     preset.background === paper.background &&
                     preset.texture === paper.texture
                   }
                   style={{ backgroundColor: preset.background }}
-                  onClick={() => updatePaper({ ...preset, patternId: null })}
+                  onClick={() =>
+                    updatePaper({
+                      ...preset,
+                      patternId: null,
+                      brandPaper: null,
+                    })
+                  }
                 />
               ))}
             </div>
+            <details className="brand-papers" open>
+              <summary>Fundos da marca</summary>
+              <div className="brand-paper-grid" aria-label="Fundos da marca">
+                {brandPapers.map(({ id, label }) => (
+                  <button
+                    type="button"
+                    key={id}
+                    aria-pressed={!paper.patternId && paper.brandPaper === id}
+                    title={label}
+                    onClick={() =>
+                      updatePaper({ brandPaper: id, patternId: null })
+                    }
+                  >
+                    <img src={brandPaperUrl(id)} alt="" loading="lazy" />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </details>
             <label>
               Colocar uma estampa
               <input
@@ -548,7 +585,10 @@ export function Book({
                     value={paper.patternId ?? ""}
                     disabled={action.pending}
                     onChange={(event) =>
-                      updatePaper({ patternId: event.target.value || null })
+                      updatePaper({
+                        patternId: event.target.value || null,
+                        brandPaper: null,
+                      })
                     }
                   >
                     <option value="">Sem estampa</option>

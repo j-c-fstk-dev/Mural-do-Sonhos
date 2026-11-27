@@ -1,3 +1,8 @@
+import {
+  brandPapers,
+  DEFAULT_BRAND_PAPER,
+  type BrandPaper,
+} from "./brandAssets";
 import { fonts, shapes, textures } from "./paper";
 import { z } from "zod";
 
@@ -87,6 +92,10 @@ const paper = z
     titleColor: color.default("#493741"),
     background: color.default("#fcf8ee"),
     patternId: id.nullable().default(null),
+    brandPaper: z
+      .enum(brandPapers.map(({ id }) => id) as BrandPaper[])
+      .nullable()
+      .default(null),
     texture: z
       .enum(Object.keys(textures) as (keyof typeof textures)[])
       .default("dots"),
@@ -325,6 +334,7 @@ export function freshWorkspace(): Workspace {
       template: "scrapbook",
       intention: "Posso começar com o que tenho hoje.",
     },
+    paper: { brandPaper: DEFAULT_BRAND_PAPER },
     dream: { ...rowBase(), description: "", answers: {} },
     goals: [],
     tasks: [],

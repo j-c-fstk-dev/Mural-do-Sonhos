@@ -469,6 +469,10 @@ export function FreeMural({
             : undefined;
         if (content.kind === "photo" && !asset)
           throw new Error("Imagem não encontrada.");
+        const stickerRatio =
+          content.kind === "sticker"
+            ? getSticker(content.sticker)?.ratio
+            : undefined;
         const ratio = asset
           ? freePhotoRatio(
               asset,
@@ -480,7 +484,9 @@ export function FreeMural({
             ? clamp(320 * ratio, MIN_ITEM_WIDTH, 360)
             : content.kind === "text"
               ? 365
-              : 170;
+              : stickerRatio
+                ? clamp(170 * stickerRatio, MIN_ITEM_WIDTH, 170)
+                : 170;
         const item = {
           ...content,
           id,
@@ -488,7 +494,11 @@ export function FreeMural({
           y: 0,
           rotation: 0,
           width,
-          height: asset ? clamp(width / ratio, 16, BOARD_HEIGHT) : undefined,
+          height: asset
+            ? clamp(width / ratio, 16, BOARD_HEIGHT)
+            : stickerRatio
+              ? clamp(width / stickerRatio, 16, 170)
+              : undefined,
         };
         await store.mutate((data) => {
           if (data.free_items.length >= FREE_ITEM_LIMIT)

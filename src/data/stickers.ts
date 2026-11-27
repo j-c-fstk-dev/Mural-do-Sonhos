@@ -1,3 +1,4 @@
+import { brandStickers } from "./brandAssets";
 type StickerDrawing = readonly [id: string, label: string, path: string];
 
 const collections: {
@@ -328,14 +329,26 @@ function sticker(
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-export const stickerCollections = collections.map((collection) => ({
-  name: collection.name,
-  stickers: collection.drawings.map(([id, label, path], index) => ({
-    id,
+type Sticker = { id: string; label: string; src: string; ratio?: number };
+export const stickerCollections: { name: string; stickers: Sticker[] }[] =
+  collections.map((collection) => ({
+    name: collection.name,
+    stickers: collection.drawings.map(([id, label, path], index) => ({
+      id,
+      label,
+      src: sticker(collection, path, index),
+    })),
+  }));
+
+stickerCollections.push({
+  name: "Coleção da marca",
+  stickers: brandStickers.map(([id, label, width, height]) => ({
+    id: `marca-${id}`,
     label,
-    src: sticker(collection, path, index),
+    src: `/brand/stickers/${id}.webp`,
+    ratio: width / height,
   })),
-}));
+});
 
 const stickers = new Map(
   stickerCollections.flatMap(({ stickers }) =>
