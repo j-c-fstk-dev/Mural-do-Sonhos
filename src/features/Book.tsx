@@ -1,5 +1,9 @@
 import { EditorDock, type EditContext, type EditTool } from "./EditorDock";
-import { brandPapers, brandPaperUrl } from "../data/brandAssets";
+import {
+  brandPapers,
+  brandPaperUrl,
+  DEFAULT_BRAND_PAPER,
+} from "../data/brandAssets";
 import {
   useCallback,
   useEffect,
@@ -27,6 +31,7 @@ import { fonts, paperPresets, textures } from "../data/paper";
 import { useAction } from "../data/useAction";
 import { layouts } from "./layouts";
 import { Mural } from "./Mural";
+import { FirstMuralGuide, type FirstMuralTarget } from "./FirstMuralGuide";
 import { EditorGuide } from "./EditorGuide";
 
 export function Book({
@@ -46,6 +51,13 @@ export function Book({
   rememberMenu: () => void;
 }) {
   const [compose, setCompose] = useState(false);
+  const [pickedPaper, setPickedPaper] = useState(false);
+  const [guidedAssembly, setGuidedAssembly] = useState(false);
+  const [hadPhotos] = useState(() =>
+    store.data.profile.template === "free"
+      ? store.data.free_items.some((item) => item.kind === "photo")
+      : store.data.cards.some((card) => card.kind === "image"),
+  );
   const [assembled, setAssembled] = useState("");
   const [chooseLayout, setChooseLayout] = useState(false);
   const [showTools, setShowTools] = useState(
@@ -106,12 +118,31 @@ export function Book({
     },
     [compact, dockPage, openTools],
   );
-  const guiding =
+  const firstGuide =
     tourSeen &&
-    !chooseLayout &&
-    !compose &&
+    !pageId &&
     !firstChoice &&
-    (replayGuide || !store.data.profile.editor_guide_seen);
+    !store.data.profile.editor_guide_seen &&
+    !replayGuide;
+  const guiding =
+    tourSeen && !chooseLayout && !compose && !firstChoice && replayGuide;
+  const onGuideTarget = useCallback(
+    (target: FirstMuralTarget) => {
+      const library = target === "text" || target === "stickers";
+      if (library) openMenu();
+      else if (compact) closeMobileSidebar();
+      if (target === "first-title" || target === "first-paper") {
+        if (compact)
+          setDock({
+            page: dockPage,
+            context: "paper",
+            tool: target === "first-title" ? "title" : "paper",
+          });
+        else openTools();
+      } else if (compact) setDock(null);
+    },
+    [openMenu, closeMobileSidebar, compact, dockPage, openTools],
+  );
   useEffect(() => {
     const stageElement = stage.current;
     const editorElement = editor.current;
@@ -164,22 +195,31 @@ export function Book({
     );
   }
 
-  function addPage() {
+  function addPage(completeGuide = false) {
     setAssembled("");
     setDirection("next");
-    void action.run(() =>
-      store.mutate((data) => {
-        const id = makeId();
-        data.pages.push({
-          id,
-          template: "free",
-          cards: [],
-          free_items: [],
-          paper: { ...paper, title: "" },
-        });
-        data.profile.active_page = id;
-      }),
-    );
+    void action
+      .run(() =>
+        store.mutate((data) => {
+          const id = makeId();
+          data.pages.push({
+            id,
+            template: "free",
+            cards: [],
+            free_items: [],
+            paper: { ...paper, title: "" },
+          });
+          data.profile.active_page = id;
+          if (completeGuide) data.profile.editor_guide_seen = true;
+        }),
+      )
+      .then((ok) => {
+        if (ok && completeGuide) {
+          if (compact) closeMobileSidebar();
+          else rememberMenu();
+          setDock(null);
+        }
+      });
   }
 
   function selectLayout(template: Workspace["profile"]["template"]) {
@@ -251,9 +291,18 @@ export function Book({
   }
 
   function updatePaper(patch: Partial<Paper>) {
-    void action.run(() =>
-      scoped.mutate((data) => Object.assign(data.paper, patch)),
-    );
+    void action
+      .run(() => scoped.mutate((data) => Object.assign(data.paper, patch)))
+      .then((ok) => {
+        if (
+          ok &&
+          ("texture" in patch ||
+            "background" in patch ||
+            "brandPaper" in patch ||
+            "patternId" in patch)
+        )
+          setPickedPaper(true);
+      });
   }
 
   const toolContents = (
@@ -261,7 +310,7 @@ export function Book({
       <div ref={setInspector} />
       <details className="book-tool" data-dock-group="paper" open>
         <summary data-guide="paper">Título e papel</summary>
-        <div data-dock-field="title">
+        <div data-dock-field="title" data-guide="first-title">
           <label>
             Título da página
             <input
@@ -309,7 +358,7 @@ export function Book({
             </label>
           </div>
         </div>
-        <div data-dock-field="paper">
+        <div data-dock-field="paper" data-guide="first-paper">
           <label>
             Cor do fundo{" "}
             <input
@@ -511,6 +560,7 @@ export function Book({
                   ? `${count} fotos colocadas na folha.`
                   : "As fotos escolhidas já estão na folha.",
             );
+            if (count > 0) setGuidedAssembly(true);
             closeMobileSidebar();
           }}
         />
@@ -542,8 +592,8 @@ export function Book({
           </button>
           <button
             className="text-button"
-            disabled={action.pending}
-            onClick={addPage}
+            disabled={action.pending || firstGuide}
+            onClick={() => addPage()}
           >
             <Plus size={17} /> Nova página
           </button>
@@ -551,6 +601,7 @@ export function Book({
         <button
           type="button"
           className="text-button"
+          data-guide="assemble"
           onClick={() => {
             setAssembled("");
             setCompose(true);
@@ -561,7 +612,8 @@ export function Book({
         <button
           type="button"
           className="text-button book-help-button"
-          aria-expanded={guiding}
+          aria-expanded={guiding || firstGuide}
+          disabled={firstGuide}
           onClick={() => setReplayGuide(true)}
         >
           Ajuda do mural
@@ -578,6 +630,33 @@ export function Book({
           </button>
         )}
       </div>
+      {firstGuide && (
+        <FirstMuralGuide
+          completed={[
+            !!paper.title.trim(),
+            pickedPaper ||
+              paper.background !== "#fcf8ee" ||
+              paper.texture !== "dots" ||
+              (paper.brandPaper !== null &&
+                paper.brandPaper !== DEFAULT_BRAND_PAPER) ||
+              !!paper.patternId,
+            (guidedAssembly || hadPhotos) &&
+              (template === "free"
+                ? scoped.data.free_items.some((item) => item.kind === "photo")
+                : scoped.data.cards.some((card) => card.kind === "image")),
+            scoped.data.free_items.some((item) => item.kind === "sticker"),
+            scoped.data.free_items.some(
+              (item) => item.kind === "text" && item.body.trim(),
+            ),
+          ]}
+          hidden={chooseLayout || compose}
+          pending={action.pending}
+          onSkip={finishGuide}
+          onTarget={onGuideTarget}
+          onAssemble={() => setCompose(true)}
+          onNewPage={() => addPage(true)}
+        />
+      )}
       <Feedback action={action} />
       {assembled && (
         <p role="status" className="notice success book-assembled">

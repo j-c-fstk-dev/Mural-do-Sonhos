@@ -39,7 +39,7 @@ const template = z.enum([
 ]);
 const font = z.enum(Object.keys(fonts) as (keyof typeof fonts)[]);
 const color = z.string().regex(/^#[0-9a-f]{6}$/i);
-const photoFrame = z.enum(["plain", "polaroid"]);
+const photoFrame = z.enum(["plain", "polaroid", "album", "kraft", "film"]);
 export type PhotoFrame = z.infer<typeof photoFrame>;
 const freeGeometry = {
   id,

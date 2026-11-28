@@ -843,3 +843,90 @@
 .book-shell[data-compact-mural="true"] .editor-guide {
   bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
+
+.template-paper {
+  position: relative;
+  isolation: isolate;
+}
+.template-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.template-overlay .template-elements,
+.template-overlay .free-paper {
+  width: 100%;
+  height: 100%;
+}
+.template-overlay .template-elements {
+  container-type: inline-size;
+}
+.template-overlay .free-paper {
+  aspect-ratio: auto;
+  outline: none;
+  box-shadow: none;
+}
+.template-overlay
+  :is(.free-item, .book-inline-position, .book-handle, .book-edit-here) {
+  pointer-events: auto;
+}
+.template-workspace .board-area:has(.placing) .template-overlay .free-item {
+  pointer-events: none;
+}
+
+.template-workspace
+  .mural-card:is(
+    [data-frame="album"],
+    [data-frame="kraft"],
+    [data-frame="film"]
+  ) {
+  background: var(--photo-frame-color);
+  border-radius: 2px;
+  padding-bottom: 10px;
+}
+.template-workspace
+  .mural-card:is(
+    [data-frame="album"],
+    [data-frame="kraft"],
+    [data-frame="film"]
+  )
+  .tape {
+  display: none;
+}
+.template-workspace
+  .mural-card[data-frame="film"]
+  :is(.card-caption, .card-tools button) {
+  color: #fff;
+}
+
+.first-mural-guide {
+  border: 1px solid #aa8cba;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-block: 6px 12px;
+  background: #fffdf8;
+}
+.first-mural-guide h2 {
+  font-size: 18px;
+  margin: 2px 0 3px;
+}
+.first-mural-guide p {
+  font-size: 13px;
+  margin: 0;
+}
+.first-mural-guide .editor-guide-actions {
+  justify-content: start;
+  margin: 4px 0;
+}
+
+.book-library:has(.template-insert) {
+  display: flex;
+  flex-direction: column;
+}
+.template-insert {
+  order: -1;
+}
+.template-overlay .free-paper {
+  background-image: none !important;
+}

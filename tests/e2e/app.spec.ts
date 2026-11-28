@@ -416,6 +416,10 @@ test("tour, book pages, transforms, typography and PNG persist", async ({
   await expect(
     page.getByRole("region", { name: "Editor livre" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Pular ajuda", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Ajuda do mural", exact: true })
+    .click();
   await expect(
     page.getByRole("complementary", { name: "Menu e biblioteca" }),
   ).toBeVisible();
@@ -988,4 +992,75 @@ test("installation settings offer device guides, a native prompt and a valid man
   for (const icon of manifest.icons)
     expect((await page.request.get(icon.src)).ok()).toBe(true);
   expect((await page.request.get("/icons/icon-192.png")).ok()).toBe(true);
+});
+
+test("guided first page adds photos, stickers and editable text to a template", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await confirmAge(page);
+  await page.getByRole("button", { name: "Pular apresentação" }).click();
+  await page.getByRole("button", { name: "Recortes", exact: true }).click();
+  const guide = page.getByRole("region", { name: "Ajuda do mural" });
+  const next = guide.getByRole("button", { name: "Continuar", exact: true });
+
+  await expect(next).toBeDisabled();
+  const title = page.getByLabel("Título da página");
+  await title.fill("Minha viagem dos sonhos");
+  await title.press("Enter");
+  await next.click();
+
+  await expect(next).toBeDisabled();
+  await page.getByLabel("Desenho do papel").selectOption("gingham");
+  await next.click();
+
+  await guide.getByRole("button", { name: "Escolher fotos" }).click();
+  const assembly = page.getByRole("dialog", { name: "Montar com fotos" });
+  await assembly.getByLabel("Carregar fotos para montar").setInputFiles(photo);
+  await assembly.getByLabel("Moldura da foto").selectOption("kraft");
+  await assembly.getByRole("button", { name: "Montar página" }).click();
+  await expect(page.locator(".mural-card")).toHaveAttribute(
+    "data-frame",
+    "kraft",
+  );
+  await next.click();
+
+  await expect(next).toBeDisabled();
+  await page.getByRole("button", { name: "Figurinhas", exact: true }).click();
+  await page.locator(".free-sticker-picker button").first().click();
+  await expect(
+    page.locator(".template-overlay .free-item-sticker"),
+  ).toHaveCount(1);
+  await next.click();
+
+  await expect(next).toBeDisabled();
+  await page.getByRole("button", { name: "Texto", exact: true }).click();
+  await page.getByRole("button", { name: /Frase curta/ }).click();
+  await dockTool(page, "Tamanho");
+  const size = page.getByLabel("Tamanho da letra");
+  await size.clear();
+  await expect(size).toHaveValue("");
+  await size.pressSequentially("30");
+  await expect(size).toHaveValue("30");
+  await size.press("Enter");
+  await expect(size).toHaveValue("30");
+
+  await next.click();
+  await guide.getByRole("button", { name: "Criar página 2" }).click();
+  await expect(page.getByText("Página 2 de 2")).toBeVisible();
+  await expect(guide).toHaveCount(0);
+  await expect(page.locator(".free-item")).toHaveCount(0);
+  await page.getByRole("button", { name: "Página anterior" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Minha viagem dos sonhos" }),
+  ).toBeVisible();
+  await expect(page.locator(".template-overlay .free-item")).toHaveCount(2);
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Baixar mural" }).click();
+  expect((await download).suggestedFilename()).toBe("meu-mural-dos-sonhos.png");
+  await page.reload();
+  await expect(page.locator(".template-overlay .free-item")).toHaveCount(2);
+  await page.locator(".template-overlay .free-item-text").click();
+  await dockTool(page, "Tamanho");
+  await expect(page.getByLabel("Tamanho da letra")).toHaveValue("30");
 });

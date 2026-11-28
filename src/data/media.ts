@@ -1,3 +1,7 @@
+import { download } from "./download";
+export { download } from "./download";
+import { BOARD_WIDTH, BOARD_HEIGHT, drawBoardItems } from "./freeBoard";
+import { photoFrameColor } from "./photoFrames";
 import { drawPageBackground, fonts } from "./paper";
 import {
   makeId,
@@ -103,14 +107,6 @@ export function removeGalleryPhoto(id: string, mutate: Store["mutate"]) {
   );
 }
 
-export function download(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 function base64(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -347,15 +343,16 @@ export async function exportMural(data: Workspace, repository: Repository) {
       ctx.rotate((position % 2 ? 1 : -1) * 0.022);
       ctx.translate(-x - w / 2, -y - h / 2);
     }
-    const instant =
-      card.asset_id &&
-      (card.frame === "polaroid" || (template === "polaroid" && !card.frame));
+    const frame = card.asset_id
+      ? (card.frame ?? (template === "polaroid" ? "polaroid" : undefined))
+      : undefined;
+    const frameColor = photoFrameColor(frame);
     ctx.fillStyle =
-      instant ||
-      (template === "polaroid" && card.kind !== "image") ||
+      frameColor ??
+      ((template === "polaroid" && card.kind !== "image") ||
       template === "clean"
         ? "#fffdf9"
-        : palette[card.color];
+        : palette[card.color]);
     ctx.fillRect(x, y, w, h);
     const imageHeight = h - 95;
     if (card.asset_id) {
@@ -395,7 +392,7 @@ export async function exportMural(data: Workspace, repository: Repository) {
     ctx.fillStyle = "#463c53";
     ctx.font = "19px sans-serif";
     wrap(ctx, card.caption, x + 16, y + h - 50, w - 32, 25, 2);
-    if (template === "scrapbook" && !instant) {
+    if (template === "scrapbook" && !frameColor) {
       ctx.fillStyle = "#dfcda9b0";
       ctx.translate(x + w / 2, y);
       ctx.rotate(-0.1);
@@ -403,6 +400,18 @@ export async function exportMural(data: Workspace, repository: Repository) {
     }
     ctx.restore();
   }
+  // Map the editable layer to the paper between the title and footer.
+  const paperTop = slots[0].y - 40;
+  const paperHeight = canvas.height - paperTop - 25;
+  ctx.save();
+  ctx.translate(0, paperTop);
+  ctx.scale(canvas.width / BOARD_WIDTH, paperHeight / BOARD_HEIGHT);
+  await drawBoardItems(
+    ctx,
+    data.free_items.filter((item) => item.kind !== "photo"),
+    repository,
+  );
+  ctx.restore();
   ctx.font = "16px sans-serif";
   ctx.fillStyle = "#6c6074";
   ctx.fillText("Um pequeno passo também é caminho.", 40, canvas.height - 20);
