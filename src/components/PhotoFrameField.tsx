@@ -21,6 +21,9 @@ export function PhotoFrameField({
         {fromLayout && <option value="">Do modelo da página</option>}
         <option value="plain">Sem moldura</option>
         <option value="polaroid">Polaroide</option>
+        <option value="album">Borda branca</option>
+        <option value="kraft">Papel kraft</option>
+        <option value="film">Filme preto</option>
       </select>
     </label>
   );

@@ -73,7 +73,7 @@ export function EditorDock({
   }, []);
   const available =
     context === "paper" && !free
-      ? options.paper.slice(0, 2)
+      ? options.paper.filter((key) => key !== "shapes")
       : context
         ? options[context]
         : [];

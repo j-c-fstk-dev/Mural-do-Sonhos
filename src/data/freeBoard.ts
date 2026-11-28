@@ -1,4 +1,5 @@
-import { download } from "./media";
+import { download } from "./download";
+import { photoFrameColor } from "./photoFrames";
 import type { FreeItem, Workspace } from "./model";
 import { drawPageBackground, fonts, shapes } from "./paper";
 import type { Repository } from "./repository";
@@ -196,7 +197,34 @@ export async function exportFreeMural(data: Workspace, repository: Repository) {
     BOARD_HEIGHT,
     repository,
   );
-  for (const item of data.free_items) {
+  await drawBoardItems(ctx, data.free_items, repository);
+  const png = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Falha ao exportar o mural."));
+    }, "image/png");
+  });
+  download(png, "meu-mural-dos-sonhos.png");
+}
+
+export async function drawBoardItems(
+  ctx: CanvasRenderingContext2D,
+  items: FreeItem[],
+  repository: Repository,
+) {
+  await Promise.allSettled(
+    items.flatMap((item) =>
+      item.kind === "text"
+        ? [
+            document.fonts.load(
+              `${item.bold ? 700 : 400} ${item.fontSize}px ${fonts[item.font].family}`,
+              item.body,
+            ),
+          ]
+        : [],
+    ),
+  );
+  for (const item of items) {
     const height = itemHeight(item);
     ctx.save();
     ctx.translate(item.x + item.width / 2, item.y + height / 2);
@@ -220,13 +248,14 @@ export async function exportFreeMural(data: Workspace, repository: Repository) {
       if (!asset) throw new Error("Imagem não encontrada. Revise o mural.");
       const image = await createImageBitmap(asset.blob);
       try {
-        if (item.frame === "polaroid") {
-          ctx.fillStyle = "#fffdf8";
+        const frameColor = photoFrameColor(item.frame);
+        if (frameColor) {
+          ctx.fillStyle = frameColor;
           ctx.fillRect(0, 0, item.width, height);
           const x = item.width * 0.065;
           const y = height * 0.06;
           const w = item.width * 0.87;
-          const h = height * 0.755;
+          const h = height * (item.frame === "polaroid" ? 0.755 : 0.88);
           const scale = Math.max(w / image.width, h / image.height);
           ctx.beginPath();
           ctx.rect(x, y, w, h);
@@ -256,11 +285,4 @@ export async function exportFreeMural(data: Workspace, repository: Repository) {
     }
     ctx.restore();
   }
-  const png = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error("Falha ao exportar o mural."));
-    }, "image/png");
-  });
-  download(png, "meu-mural-dos-sonhos.png");
 }

@@ -295,12 +295,21 @@ function TextEditor({
             type="number"
             min={10}
             max={120}
-            value={item.fontSize}
-            onChange={(event) => {
-              if (event.currentTarget.value)
-                update({
-                  fontSize: clamp(event.currentTarget.valueAsNumber, 10, 120),
-                });
+            key={item.fontSize}
+            defaultValue={item.fontSize}
+            onBlur={(event) => {
+              const input = event.currentTarget;
+              const number = input.valueAsNumber;
+              const size = Number.isFinite(number)
+                ? clamp(number, 10, 120)
+                : item.fontSize;
+              input.value = String(size);
+              if (size !== item.fontSize) update({ fontSize: size });
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape")
+                event.currentTarget.value = String(item.fontSize);
             }}
           />
         </label>
@@ -393,16 +402,27 @@ export function FreeMural({
   closeMobileSidebar,
   showInspector,
   onContext,
+  overlay,
+  deselection = 0,
 }: ScreenProps & {
+  overlay?: HTMLElement | null;
+  deselection?: number;
   sidebar: HTMLElement | null;
   inspector: HTMLElement | null;
   closeMobileSidebar: () => void;
   showInspector: () => void;
   onContext?: (context: EditContext) => void;
 }) {
-  const [selectedId, select] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{
+    id: string | null;
+    version: number;
+  }>();
+  const selectedId = selection?.version === deselection ? selection.id : null;
+  function select(id: string | null) {
+    setSelection({ id, version: deselection });
+  }
   const [library, setLibrary] = useState<"photos" | "text" | "stickers" | null>(
-    "photos",
+    overlay === undefined ? "photos" : null,
   );
   const [category, setCategory] = useState(0);
   const [fontsReady, setFontsReady] = useState(false);
@@ -420,10 +440,13 @@ export function FreeMural({
   const drag = useRef<Drag | null>(null);
   const draggedClick = useRef(false);
   const action = useAction();
-  const items = store.data.free_items;
+  const isTemplate = overlay !== undefined;
+  const items = isTemplate
+    ? store.data.free_items.filter((item) => item.kind !== "photo")
+    : store.data.free_items;
   const selectedIndex = items.findIndex((item) => item.id === selectedId);
   const selected = items[selectedIndex];
-  const full = items.length >= FREE_ITEM_LIMIT;
+  const full = store.data.free_items.length >= FREE_ITEM_LIMIT;
 
   useEffect(() => {
     let live = true;
@@ -507,7 +530,7 @@ export function FreeMural({
         await store.mutate((data) => {
           if (data.free_items.length >= FREE_ITEM_LIMIT)
             throw new Error("O limite desta página foi atingido.");
-          data.free_items.push(initialPlacement(item, data.free_items));
+          data.free_items.push(initialPlacement(item, items));
         });
       })
       .then((ok) => {
@@ -573,10 +596,15 @@ export function FreeMural({
         const index = data.free_items.findIndex(
           (item) => item.id === selected.id,
         );
-        const neighbor = data.free_items[index + offset];
-        if (index < 0 || !neighbor) return;
-        data.free_items[index + offset] = data.free_items[index];
-        data.free_items[index] = neighbor;
+        const neighborId = items[selectedIndex + offset]?.id;
+        const neighbor = data.free_items.findIndex(
+          (item) => item.id === neighborId,
+        );
+        if (index < 0 || neighbor < 0) return;
+        [data.free_items[index], data.free_items[neighbor]] = [
+          data.free_items[neighbor],
+          data.free_items[index],
+        ];
       }),
     );
   }
@@ -676,23 +704,36 @@ export function FreeMural({
       finish(event, false),
   };
 
+  function renderSheet(sheet: React.ReactNode) {
+    return isTemplate ? overlay && createPortal(sheet, overlay) : sheet;
+  }
+
   return (
-    <section className="free-mural" aria-label="Editor livre">
+    <section
+      className="free-mural"
+      aria-label={isTemplate ? "Textos e enfeites" : "Editor livre"}
+    >
       {sidebar &&
         createPortal(
-          <div className="book-assets">
+          <div
+            className={
+              isTemplate ? "book-assets template-insert" : "book-assets"
+            }
+          >
             <div className="book-insert" aria-label="Adicionar ao mural">
-              <button
-                type="button"
-                className="text-button"
-                data-guide="photos"
-                aria-expanded={library === "photos"}
-                onClick={() =>
-                  setLibrary(library === "photos" ? null : "photos")
-                }
-              >
-                <ImagePlus size={17} /> Fotos
-              </button>
+              {!isTemplate && (
+                <button
+                  type="button"
+                  className="text-button"
+                  data-guide="photos"
+                  aria-expanded={library === "photos"}
+                  onClick={() =>
+                    setLibrary(library === "photos" ? null : "photos")
+                  }
+                >
+                  <ImagePlus size={17} /> Fotos
+                </button>
+              )}
               <button
                 type="button"
                 className="text-button"
@@ -852,138 +893,43 @@ export function FreeMural({
           </div>,
           sidebar,
         )}
-      <div className="book-paper-fit">
-        <div
-          className="free-paper"
-          ref={board}
-          data-guide="sheet"
-          aria-label="Área do mural livre"
-          data-texture={store.data.paper.texture}
-          style={{ backgroundColor: store.data.paper.background }}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              select(null);
-              onContext?.("paper");
+      {renderSheet(
+        <div className={isTemplate ? "template-elements" : "book-paper-fit"}>
+          <div
+            className="free-paper"
+            ref={board}
+            data-guide={isTemplate ? undefined : "sheet"}
+            aria-label={
+              isTemplate ? "Textos e enfeites da folha" : "Área do mural livre"
             }
-          }}
-        >
-          {!items.length && (
-            <p className="free-empty">
-              Comece com uma foto, uma frase ou uma figurinha.
-            </p>
-          )}
-          {items.map((item) => {
-            const shown = previewItem(item);
-            const sticker =
-              shown.kind === "sticker" ? getSticker(shown.sticker) : undefined;
-            return (
-              <div
-                className="book-element"
-                key={item.id}
-                style={{
-                  left: `${(shown.x / BOARD_WIDTH) * 100}%`,
-                  top: `${(shown.y / BOARD_HEIGHT) * 100}%`,
-                  width: `${(shown.width / BOARD_WIDTH) * 100}%`,
-                  height: `${(itemHeight(shown) / BOARD_HEIGHT) * 100}%`,
-                  transform: `rotate(${shown.rotation}deg)`,
-                }}
-              >
-                <button
-                  className={`free-item free-item-${item.kind}`}
-                  data-frame={shown.kind === "photo" ? shown.frame : undefined}
-                  type="button"
-                  aria-label={`${{ photo: "Foto", text: "Texto", shape: "Forma", sticker: "Figurinha" }[item.kind]}: ${label(item)}`}
-                  aria-pressed={selectedId === item.id}
-                  onClick={(event) => {
-                    if (draggedClick.current && event.detail !== 0) return;
-                    select(item.id);
-                    onContext?.(item.kind);
-                  }}
-                  onDoubleClick={() =>
-                    item.kind === "text"
-                      ? setInlineId(item.id)
-                      : showInspector()
-                  }
-                  onPointerDown={(event) => start(event, item, "move")}
-                  onKeyDown={(event) => {
-                    if (
-                      item.kind === "text" &&
-                      (event.key === "F2" || event.key === "Enter")
-                    ) {
-                      event.preventDefault();
-                      select(item.id);
-                      setInlineId(item.id);
-                    } else keyMove(event, item);
-                  }}
-                  {...pointerEvents}
-                >
-                  {shown.kind === "photo" && (
-                    <LocalImage
-                      assetId={shown.asset_id}
-                      repository={store.repository}
-                      alt=""
-                      className={shown.height ? "book-photo-resized" : ""}
-                    />
-                  )}
-                  {(shown.kind === "text" || shown.kind === "shape") && (
-                    <PaintedItem item={shown} fontsReady={fontsReady} />
-                  )}
-                  {sticker && (
-                    <img src={sticker.src} alt="" draggable={false} />
-                  )}
-                </button>
-              </div>
-            );
-          })}
-          {preview?.guides.map(({ axis, position, from, to }) => (
-            <div
-              key={axis}
-              className={`book-alignment-guide guide-${axis}`}
-              data-axis={axis}
-              aria-hidden="true"
-              style={
-                axis === "x"
-                  ? {
-                      left: `clamp(1px, ${(position / BOARD_WIDTH) * 100}%, calc(100% - 1px))`,
-                      top: `${(from / BOARD_HEIGHT) * 100}%`,
-                      height: `${((to - from) / BOARD_HEIGHT) * 100}%`,
-                    }
-                  : {
-                      top: `clamp(1px, ${(position / BOARD_HEIGHT) * 100}%, calc(100% - 1px))`,
-                      left: `${(from / BOARD_WIDTH) * 100}%`,
-                      width: `${((to - from) / BOARD_WIDTH) * 100}%`,
-                    }
+            data-texture={isTemplate ? undefined : store.data.paper.texture}
+            style={
+              isTemplate
+                ? undefined
+                : { backgroundColor: store.data.paper.background }
+            }
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                select(null);
+                onContext?.("paper");
               }
-            />
-          ))}
-          {selected?.kind === "text" && inlineId === selected.id && (
-            <div
-              className="book-inline-position"
-              style={{
-                left: `${(selected.x / BOARD_WIDTH) * 100}%`,
-                top: `${(selected.y / BOARD_HEIGHT) * 100}%`,
-                width: `${(selected.width / BOARD_WIDTH) * 100}%`,
-              }}
-            >
-              <InlineText
-                key={selected.id}
-                item={selected}
-                done={(body) => {
-                  setInlineId(null);
-                  if (body !== undefined && body !== selected.body)
-                    update(selected, { body });
-                }}
-              />
-            </div>
-          )}
-          {selected &&
-            inlineId !== selected.id &&
-            (() => {
-              const shown = previewItem(selected);
+            }}
+          >
+            {!isTemplate && !items.length && (
+              <p className="free-empty">
+                Comece com uma foto, uma frase ou uma figurinha.
+              </p>
+            )}
+            {items.map((item) => {
+              const shown = previewItem(item);
+              const sticker =
+                shown.kind === "sticker"
+                  ? getSticker(shown.sticker)
+                  : undefined;
               return (
                 <div
-                  className="book-transform"
-                  aria-label="Mudar tamanho ou girar"
+                  className="book-element"
+                  key={item.id}
                   style={{
                     left: `${(shown.x / BOARD_WIDTH) * 100}%`,
                     top: `${(shown.y / BOARD_HEIGHT) * 100}%`,
@@ -992,62 +938,175 @@ export function FreeMural({
                     transform: `rotate(${shown.rotation}deg)`,
                   }}
                 >
-                  {(shown.kind === "text"
-                    ? (["w", "e"] as const)
-                    : handles
-                  ).map((handle) => (
-                    <button
-                      type="button"
-                      key={handle}
-                      className={`book-handle handle-${handle}`}
-                      aria-label={`Redimensionar ${handle}`}
-                      tabIndex={-1}
-                      onPointerDown={(event) => start(event, selected, handle)}
-                      {...pointerEvents}
-                    />
-                  ))}
                   <button
+                    className={`free-item free-item-${item.kind}`}
+                    data-frame={
+                      shown.kind === "photo" ? shown.frame : undefined
+                    }
                     type="button"
-                    className="book-handle handle-rotate"
-                    aria-label="Arraste para girar"
-                    data-inside={shown.y < 45}
-                    tabIndex={-1}
-                    onPointerDown={(event) => start(event, selected, "rotate")}
+                    aria-label={`${{ photo: "Foto", text: "Texto", shape: "Forma", sticker: "Figurinha" }[item.kind]}: ${label(item)}`}
+                    aria-pressed={selectedId === item.id}
+                    onClick={(event) => {
+                      if (draggedClick.current && event.detail !== 0) return;
+                      select(item.id);
+                      onContext?.(item.kind);
+                    }}
+                    onDoubleClick={() =>
+                      item.kind === "text"
+                        ? setInlineId(item.id)
+                        : showInspector()
+                    }
+                    onPointerDown={(event) => start(event, item, "move")}
+                    onKeyDown={(event) => {
+                      if (
+                        item.kind === "text" &&
+                        (event.key === "F2" || event.key === "Enter")
+                      ) {
+                        event.preventDefault();
+                        select(item.id);
+                        setInlineId(item.id);
+                      } else keyMove(event, item);
+                    }}
                     {...pointerEvents}
                   >
-                    <RotateCw size={14} />
+                    {shown.kind === "photo" && (
+                      <LocalImage
+                        assetId={shown.asset_id}
+                        repository={store.repository}
+                        alt=""
+                        className={shown.height ? "book-photo-resized" : ""}
+                      />
+                    )}
+                    {(shown.kind === "text" || shown.kind === "shape") && (
+                      <PaintedItem item={shown} fontsReady={fontsReady} />
+                    )}
+                    {sticker && (
+                      <img src={sticker.src} alt="" draggable={false} />
+                    )}
                   </button>
-                  {shown.kind === "text" && (
-                    <button
-                      type="button"
-                      className="book-edit-here"
-                      aria-label="Editar texto na folha"
-                      data-inside={shown.y + itemHeight(shown) > 690}
-                      onClick={() => setInlineId(shown.id)}
-                    >
-                      <Pencil size={16} />
-                    </button>
-                  )}
                 </div>
               );
-            })()}
+            })}
+            {preview?.guides.map(({ axis, position, from, to }) => (
+              <div
+                key={axis}
+                className={`book-alignment-guide guide-${axis}`}
+                data-axis={axis}
+                aria-hidden="true"
+                style={
+                  axis === "x"
+                    ? {
+                        left: `clamp(1px, ${(position / BOARD_WIDTH) * 100}%, calc(100% - 1px))`,
+                        top: `${(from / BOARD_HEIGHT) * 100}%`,
+                        height: `${((to - from) / BOARD_HEIGHT) * 100}%`,
+                      }
+                    : {
+                        top: `clamp(1px, ${(position / BOARD_HEIGHT) * 100}%, calc(100% - 1px))`,
+                        left: `${(from / BOARD_WIDTH) * 100}%`,
+                        width: `${((to - from) / BOARD_WIDTH) * 100}%`,
+                      }
+                }
+              />
+            ))}
+            {selected?.kind === "text" && inlineId === selected.id && (
+              <div
+                className="book-inline-position"
+                style={{
+                  left: `${(selected.x / BOARD_WIDTH) * 100}%`,
+                  top: `${(selected.y / BOARD_HEIGHT) * 100}%`,
+                  width: `${(selected.width / BOARD_WIDTH) * 100}%`,
+                }}
+              >
+                <InlineText
+                  key={selected.id}
+                  item={selected}
+                  done={(body) => {
+                    setInlineId(null);
+                    if (body !== undefined && body !== selected.body)
+                      update(selected, { body });
+                  }}
+                />
+              </div>
+            )}
+            {selected &&
+              inlineId !== selected.id &&
+              (() => {
+                const shown = previewItem(selected);
+                return (
+                  <div
+                    className="book-transform"
+                    aria-label="Mudar tamanho ou girar"
+                    style={{
+                      left: `${(shown.x / BOARD_WIDTH) * 100}%`,
+                      top: `${(shown.y / BOARD_HEIGHT) * 100}%`,
+                      width: `${(shown.width / BOARD_WIDTH) * 100}%`,
+                      height: `${(itemHeight(shown) / BOARD_HEIGHT) * 100}%`,
+                      transform: `rotate(${shown.rotation}deg)`,
+                    }}
+                  >
+                    {(shown.kind === "text"
+                      ? (["w", "e"] as const)
+                      : handles
+                    ).map((handle) => (
+                      <button
+                        type="button"
+                        key={handle}
+                        className={`book-handle handle-${handle}`}
+                        aria-label={`Redimensionar ${handle}`}
+                        tabIndex={-1}
+                        onPointerDown={(event) =>
+                          start(event, selected, handle)
+                        }
+                        {...pointerEvents}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      className="book-handle handle-rotate"
+                      aria-label="Arraste para girar"
+                      data-inside={shown.y < 45}
+                      tabIndex={-1}
+                      onPointerDown={(event) =>
+                        start(event, selected, "rotate")
+                      }
+                      {...pointerEvents}
+                    >
+                      <RotateCw size={14} />
+                    </button>
+                    {shown.kind === "text" && (
+                      <button
+                        type="button"
+                        className="book-edit-here"
+                        aria-label="Editar texto na folha"
+                        data-inside={shown.y + itemHeight(shown) > 690}
+                        onClick={() => setInlineId(shown.id)}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+          </div>
+        </div>,
+      )}
+      {!isTemplate && (
+        <div className="book-page-actions">
+          <button
+            type="button"
+            className="text-button"
+            disabled={!items.length || action.pending}
+            onClick={() =>
+              void action.run(
+                () => exportFreeMural(store.data, store.repository),
+                "Imagem pronta para baixar.",
+              )
+            }
+          >
+            <Download size={17} /> Baixar mural
+          </button>
         </div>
-      </div>
-      <div className="book-page-actions">
-        <button
-          type="button"
-          className="text-button"
-          disabled={!items.length || action.pending}
-          onClick={() =>
-            void action.run(
-              () => exportFreeMural(store.data, store.repository),
-              "Imagem pronta para baixar.",
-            )
-          }
-        >
-          <Download size={17} /> Baixar mural
-        </button>
-      </div>
+      )}
       <Feedback action={action} />
       {full && (
         <p className="small muted">

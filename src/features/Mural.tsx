@@ -165,6 +165,8 @@ export function Mural({
   onContext?: (context: EditContext) => void;
   openLibrary: () => void;
 }) {
+  const [overlay, setOverlay] = useState<HTMLDivElement | null>(null);
+  const [deselection, setDeselection] = useState(0);
   const [activeCardId, setActiveCard] = useState<string | null>(null);
   const [editor, setEditor] = useState<Card | "quote" | null>(null);
   const [newFrame, setNewFrame] = useState<PhotoFrame>();
@@ -179,6 +181,8 @@ export function Mural({
   const activeCard = cards.find((card) => card.id === activeCardId);
   function activateCard(card: Card) {
     setActiveCard(card.id);
+    setDeselection((value) => value + 1);
+    if (!onContext) showInspector();
     onContext?.(card.kind === "image" ? "card-photo" : "card-text");
   }
   function removeCard(card: Card) {
@@ -319,8 +323,7 @@ export function Mural({
 
   return (
     <div className="template-workspace">
-      {onContext &&
-        inspector &&
+      {inspector &&
         activeCard &&
         createPortal(
           <div className="book-tool" data-dock-group="card">
@@ -529,6 +532,7 @@ export function Mural({
           onClick={(event) => {
             if (event.target === event.currentTarget) {
               setActiveCard(null);
+              setDeselection((value) => value + 1);
               onContext?.("paper");
             }
           }}
@@ -581,10 +585,9 @@ export function Mural({
                         : undefined
                     }
                     data-active-card={!!onContext && activeCardId === card.id}
-                    tabIndex={onContext ? 0 : undefined}
+                    tabIndex={0}
                     onKeyDown={(event) => {
                       if (
-                        onContext &&
                         event.target === event.currentTarget &&
                         (event.key === "Enter" || event.key === " ")
                       ) {
@@ -593,10 +596,7 @@ export function Mural({
                       }
                     }}
                     onClick={(event) => {
-                      if (
-                        onContext &&
-                        !(event.target as HTMLElement).closest("button, a")
-                      )
+                      if (!(event.target as HTMLElement).closest("button, a"))
                         activateCard(card);
                     }}
                     draggable
@@ -718,7 +718,21 @@ export function Mural({
               </div>
             );
           })}
+          <div className="template-overlay" ref={setOverlay} />
         </div>
+        <FreeMural
+          store={store}
+          overlay={overlay}
+          deselection={deselection}
+          sidebar={sidebar}
+          inspector={inspector}
+          closeMobileSidebar={closeMobileSidebar}
+          showInspector={showInspector}
+          onContext={(context) => {
+            setActiveCard(null);
+            onContext?.(context);
+          }}
+        />
         <div className="toolbar">
           <button
             className="text-button"
@@ -728,7 +742,11 @@ export function Mural({
             <Plus size={17} /> Adicionar espaços
           </button>
           <button
-            disabled={!cards.length || action.pending}
+            disabled={
+              (!cards.length &&
+                !store.data.free_items.some((item) => item.kind !== "photo")) ||
+              action.pending
+            }
             onClick={() =>
               void action.run(
                 () => exportMural(store.data, store.repository),

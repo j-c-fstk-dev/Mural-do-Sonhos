@@ -402,3 +402,38 @@
 .free-sticker-picker img {
   object-fit: contain;
 }
+
+.free-item-photo:is(
+  [data-frame="album"],
+  [data-frame="kraft"],
+  [data-frame="film"]
+),
+.free-item-photo:is(
+    [data-frame="album"],
+    [data-frame="kraft"],
+    [data-frame="film"]
+  ):hover:not(:disabled) {
+  background: var(--photo-frame-color);
+}
+.free-item-photo:is(
+    [data-frame="album"],
+    [data-frame="kraft"],
+    [data-frame="film"]
+  )
+  img {
+  position: absolute;
+  left: 6.5%;
+  top: 6%;
+  width: 87%;
+  height: 88%;
+  object-fit: cover;
+}
+[data-frame="album"] {
+  --photo-frame-color: #fff;
+}
+[data-frame="kraft"] {
+  --photo-frame-color: #c7a476;
+}
+[data-frame="film"] {
+  --photo-frame-color: #302c32;
+}

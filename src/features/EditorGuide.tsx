@@ -70,10 +70,7 @@ export function EditorGuide({
 }) {
   const available = free
     ? steps
-    : steps.filter(
-        ({ target }) =>
-          !["text", "stickers", "shapes", "layers", "format"].includes(target),
-      );
+    : steps.filter(({ target }) => target !== "shapes");
   const [index, setIndex] = useState(0);
   const position = Math.min(index, available.length - 1);
   const step = available[position];
